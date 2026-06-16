@@ -515,7 +515,13 @@ body{
     radial-gradient(900px 500px at 0% 0%, #0e2236 0%, transparent 50%),
     linear-gradient(180deg,#0b1622 0%,#091320 100%);
   background-attachment:fixed;
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding:max(env(safe-area-inset-top),8px) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-user-select:none; -moz-user-select:none; user-select:none;
+  -webkit-touch-callout:none; touch-action:manipulation;
+}
+/* 輸入框允許選取（其餘全站禁止） */
+input, textarea, select{
+  -webkit-user-select:auto; -moz-user-select:auto; user-select:auto;
 }
 a{color:inherit;text-decoration:none}
 .wrap{max-width:1200px;margin:0 auto;padding:22px 20px 60px}
@@ -534,7 +540,7 @@ a{color:inherit;text-decoration:none}
 .meta .date{font-family:var(--serif);font-weight:700;color:var(--ink);font-size:15px}
 .meta #updated{color:var(--gold-dim)}
 
-.weather{margin-top:20px;border:1px solid var(--line2);border-radius:16px;
+.wxcard{margin-top:20px;border:1px solid var(--line2);border-radius:16px;
   background:linear-gradient(135deg,rgba(23,41,60,.9),rgba(16,30,46,.7));
   padding:20px 22px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;
   box-shadow:0 10px 30px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.03)}
@@ -550,7 +556,7 @@ a{color:inherit;text-decoration:none}
 .wx-stat .k{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:3px}
 .wx-city select{background:rgba(11,22,34,.8);color:var(--gold-soft);
   border:1px solid var(--line2);border-radius:9px;padding:8px 12px;
-  font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;outline:none}
+  font-family:var(--sans);font-size:16px;font-weight:700;cursor:pointer;outline:none}
 .wx-city select:hover{border-color:var(--gold)}
 
 .toolbar{margin-top:20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -592,8 +598,8 @@ details.cat>summary:hover .cat-name{color:var(--gold-soft)}
 .cat-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;min-height:28px}
 details.cat>summary.cat-head{display:flex;align-items:center;gap:12px}
 .cat-tag{display:inline-flex;align-items:center;justify-content:center;
-  width:96px;height:24px;box-sizing:border-box;flex-shrink:0;
-  font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  width:108px;height:24px;box-sizing:border-box;flex-shrink:0;white-space:nowrap;
+  font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
   border-radius:6px;color:#0b1622}
 .cat-tag.world{background:var(--world)} .cat-tag.house{background:var(--house)} .cat-tag.weather{background:var(--weather)} .cat-tag.domestic{background:var(--domestic)}
 .cat-name{font-family:var(--serif);font-size:17px;font-weight:700;line-height:1}
@@ -629,14 +635,14 @@ details.cat>summary.cat-head{display:flex;align-items:center;gap:12px}
 @keyframes sk{0%,100%{opacity:.4}50%{opacity:.8}}
 
 footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
-  display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
-  font-size:10.5px;color:var(--muted);letter-spacing:.5px}
+  display:flex;justify-content:center;text-align:center;flex-wrap:wrap;gap:8px;
+  font-size:11.5px;color:var(--muted);letter-spacing:1px}
 
 @media(max-width:560px){
-  .wrap{padding:18px 14px 50px}
+  .wrap{padding:calc(14px + env(safe-area-inset-top)) 14px 50px}
   .meta{text-align:left}
   .filters{margin-left:0;width:100%}
-  .weather{gap:16px;padding:18px}
+  .wxcard{gap:16px;padding:18px}
   .wx-stats{width:100%;justify-content:space-between;gap:0}
   .grid{grid-template-columns:1fr}
 }
@@ -856,7 +862,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     )
 
     weather_card = (
-        '  <section class="weather" id="weather">\n'
+        '  <section class="wxcard" id="weather">\n'
         '    <div class="wx-main">\n'
         '      <div class="wx-icon" id="wx-icon">⛅</div>\n'
         '      <div><div class="wx-temp" id="wx-temp">--<small>°C</small></div></div>\n'
@@ -891,7 +897,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="每日情報站：政治局勢、台灣房市、氣象與即時天氣彙整">
 <title>每日情報站 · {date_str}</title>
 <link rel="icon" type="image/png" sizes="32x32" href="{_icon_uri('favicon-32.png','image/png')}">
@@ -911,8 +917,6 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     </div>
     <div class="meta">
       <div class="date">{date_str}</div>
-      <div id="updated">更新 {time_str}{cache_note}</div>
-      <div style="font-size:10px;color:var(--muted)">房市 {len(house)} · 氣象 {len(weather)} · 國際 {len(world)} · 政治 {len(domestic)} 則 · 保留 7 天</div>
     </div>
   </header>
 {weather_card}
@@ -920,8 +924,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
 {block_today}
 {block_week}
   <footer>
-    <span>每日情報站 · {today().year}</span>
-    <span>新聞：Google News RSS（本機抓取）&nbsp;·&nbsp; 天氣：Open-Meteo &nbsp;·&nbsp; 免費無需金鑰</span>
+    <span>© 版權所有　住商不動產　廖梓翔</span>
   </footer>
 </div>
 {WEATHER_FILTER_JS}
