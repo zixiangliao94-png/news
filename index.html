@@ -19,7 +19,7 @@
   --line:rgba(212,175,55,.20); --line2:rgba(212,175,55,.34);
   --gold:#d4af37; --gold-soft:#e7cd84; --gold-dim:#b3942f;
   --ink:#eef3f8; --sub:#b3c2d1; --muted:#7e93a6;
-  --world:#7fb2e3; --house:#e7cd84;
+  --world:#7fb2e3; --house:#e7cd84; --weather:#6cc6d6;
   --serif:'Noto Serif TC',serif; --sans:'Noto Sans TC',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -100,7 +100,7 @@ a{color:inherit;text-decoration:none}
 .cat-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .cat-tag{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
   padding:4px 10px;border-radius:6px;color:#0b1622}
-.cat-tag.world{background:var(--world)} .cat-tag.house{background:var(--house)}
+.cat-tag.world{background:var(--world)} .cat-tag.house{background:var(--house)} .cat-tag.weather{background:var(--weather)}
 .cat-name{font-family:var(--serif);font-size:17px;font-weight:700}
 .cat-count{margin-left:auto;font-size:11px;color:var(--muted)}
 
@@ -110,7 +110,7 @@ a{color:inherit;text-decoration:none}
   transition:transform .18s,border-color .18s,box-shadow .18s;animation:rise .4s ease both;overflow:hidden;display:block}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
   background:var(--accent,var(--gold));opacity:.7}
-.card.world{--accent:var(--world)} .card.house{--accent:var(--house)}
+.card.world{--accent:var(--world)} .card.house{--accent:var(--house)} .card.weather{--accent:var(--weather)}
 .card:hover{transform:translateY(-3px);border-color:var(--line2);
   box-shadow:0 12px 28px rgba(0,0,0,.35)}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -158,8 +158,8 @@ footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
     </div>
     <div class="meta">
       <div class="date">2026 年 6 月 16 日</div>
-      <div id="updated">更新 03:42</div>
-      <div style="font-size:10px;color:var(--muted)">國際 9 則 · 房市 8 則 · 保留 7 天</div>
+      <div id="updated">更新 03:53</div>
+      <div style="font-size:10px;color:var(--muted)">國際 0 則 · 房市 0 則 · 氣象 0 則 · 保留 7 天</div>
     </div>
   </header>
   <section class="weather" id="weather">
@@ -178,26 +178,34 @@ footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
     <div class="wx-city"><select id="city" aria-label="選擇城市"></select></div>
   </section>
   <div class="toolbar">
+    <button class="btn btn-primary" onclick="__refresh()">↻ 立即更新</button>
     <div class="filters">
       <button class="chip on" data-f="all" onclick="__filter('all')">全部</button>
       <button class="chip" data-f="world" onclick="__filter('world')">🌐 國際</button>
       <button class="chip" data-f="house" onclick="__filter('house')">🏠 房市</button>
+      <button class="chip" data-f="weather" onclick="__filter('weather')">🌦️ 氣象</button>
     </div>
-    <div class="status"><span class="dot live"></span><span>更新 03:42</span></div>
+    <div class="status"><span class="dot live"></span><span>更新 03:53</span></div>
   </div>
   <section class="block">
     <div class="block-head"><span class="zh">本日</span><span class="en">Today</span><span class="range">6/16</span></div>
     <div class="block-rule"></div>
     <div class="cat" data-cat="world">
-      <div class="cat-head"><span class="cat-tag world">World</span><span class="cat-name">國際局勢</span><span class="cat-count">1 則</span></div>
+      <div class="cat-head"><span class="cat-tag world">World</span><span class="cat-name">國際局勢</span><span class="cat-count"></span></div>
       <div class="grid">
-<a class="card world" href="https://news.google.com/rss/articles/CBMikANBVV95cUxNd2xpS0dKR3ZTNmNoZHJQbmNpb3JPNlVzbkoxSDN5X2UwVkJ3UEktbVF4V2hwQzBLaDJKbzZZMmZWWnF3bTN5aGJFYldMMEtpS1lidF95cmtFcUs0YmY4dnRwdmdmZzM3dXo3QWNCVnItX1RZVlZnRkh4MTN0YmwwQWdQcFlHN21KVDZFQmRBVFRTNW1VSXRkcjVpNXY5VS1ZTmFtUXpMWExOVXd5TEJKOGx2SEc1NThhSmRfa1NoTjkzWnp4VGxfa3lyMUlvTWFWMURSZGx6UWZIdU0wYlRpWXRHN2o0S1NfWlBPZTN0WTdFSXBiQW5UMGNXUlpBNFlvNnhYM0phdXg1OElkQkhwczMtMGoyZ0l1RHpnWE4wSE0xdkRSZUFYWjNpbGtMUXo5YWl2Vm9DbU9keDROZjR4RzdjOFdpa3R3VWRWdENTRlMxbVFYb2FxanF5Zl9FZHBWclhka3EwVUplRkQtTmduTVBEOEhhcWpMa3ExZXd4WFdxQ3d4TW1pdlg5M1F5VWtB?oc=5" target="_blank" rel="noopener"><div class="card-title">川普帶著伊朗和平協議成果出席G7峰會 稱下一步聚焦烏克蘭戰爭 - Yahoo新聞</div><div class="card-body">川普帶著伊朗和平協議成果出席G7峰會 稱下一步聚焦烏克蘭戰爭 Yahoo新聞</div><div class="card-foot"><span class="card-src">Yahoo新聞</span><span class="card-link">開啟原文 →</span></div></a>
+<div class="empty"><span class="ic">📭</span>目前沒有資料</div>
       </div>
     </div>
     <div class="cat" data-cat="house">
-      <div class="cat-head"><span class="cat-tag house">Housing</span><span class="cat-name">台灣房市</span><span class="cat-count">1 則</span></div>
+      <div class="cat-head"><span class="cat-tag house">Housing</span><span class="cat-name">台灣房市</span><span class="cat-count"></span></div>
       <div class="grid">
-<a class="card house" href="https://news.google.com/rss/articles/CBMiXEFVX3lxTFBUXy1UZDRDZVN6RjFIb3I4dmNEU3RiZHF6WnZ6TG9NTG5Lb0duUUJiZ3o3VmJjdmVvR3VRMFJqb19NcXpSMFRMS2cyT1lWM3hFNGdJZnUzQ09jaEhu0gFiQVVfeXFMTVZKTFMtNGlrenhPdjRocThOemhoLTBqVkQwMXE3Y2lZVFJJbU1JU1RyUXdNUUQwUTgyVGxaTVZXZm05Uk9CUzJvZG9HQzhqUmJrb3paeUZfQnl4T2dFcVhZcGc?oc=5" target="_blank" rel="noopener"><div class="card-title">老房子沒人要？實價登錄數據打臉「40年老房市佔破4成」：一半總價住進蛋黃區 - udn房地產</div><div class="card-body">老房子沒人要？實價登錄數據打臉「40年老房市佔破4成」：一半總價住進蛋黃區 udn房地產</div><div class="card-foot"><span class="card-src">udn房地產</span><span class="card-link">開啟原文 →</span></div></a>
+<div class="empty"><span class="ic">📭</span>目前沒有資料</div>
+      </div>
+    </div>
+    <div class="cat" data-cat="weather">
+      <div class="cat-head"><span class="cat-tag weather">Weather</span><span class="cat-name">氣象消息</span><span class="cat-count"></span></div>
+      <div class="grid">
+<div class="empty"><span class="ic">📭</span>目前沒有資料</div>
       </div>
     </div>
   </section>
@@ -205,28 +213,21 @@ footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
     <div class="block-head"><span class="zh">本周</span><span class="en">This Week</span><span class="range">6/10 – 6/15</span></div>
     <div class="block-rule"></div>
     <div class="cat" data-cat="world">
-      <div class="cat-head"><span class="cat-tag world">World</span><span class="cat-name">國際局勢</span><span class="cat-count">8 則</span></div>
+      <div class="cat-head"><span class="cat-tag world">World</span><span class="cat-name">國際局勢</span><span class="cat-count"></span></div>
       <div class="grid">
-<a class="card world" href="https://news.google.com/rss/articles/CBMiT0FVX3lxTE11blUtR08yQk5KeUNUTS1mT0xXN0NmZW9aWVBwZTV1cWpKeDR5VVE2MlZ6MVZ6VnNmclBVVTdkNTBQUF8ydW9HSTFrVzFieVE?oc=5" target="_blank" rel="noopener"><div class="card-title">普丁與澤倫斯基同日通話川普！烏克蘭戰爭成G7峰會前外交焦點 - news.cnyes.com</div><div class="card-body">普丁與澤倫斯基同日通話川普！烏克蘭戰爭成G7峰會前外交焦點 news.cnyes.com</div><div class="card-foot"><span class="card-src">news.cnyes.com</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card world" href="https://news.google.com/rss/articles/CBMigwNBVV95cUxNMmdYQUZhV2NVSzdubVdCMC1EOTRtUHlweHhVTGRsemt6Mkl4dVRzRXFpazZ3MUw4VlZ2MXY3ZVJyVG9FRy1Fc0FiQXBMN2VXemVQeDl4ZVlwMDBTSnZzR0dqTE1uRmVWNUlVWTlPMk5jTmN1TndxdzV0RkhUdERMeEhnX2UwcjQtYmc3VS0tbFdWUjNNVmRpYjRJSnpYa09sb0lUVHpyRWFCVWtITlFCV0ZzOUZwRjZ1Z2ZYRHdUeF9CRzVOOGpxMVdiUWJEZkQweGZPWGxOQ2gtcnBTM3NlRHh4dE8tLXhfZjZBSE45V04xazZTNGNidkh0XzQ5ZDhhVDJwWEdldnVWZ0lRQVM4RFJBU1pjZVJHaFVCRmV6b3Ffc2lEU2pqekdTT2ZmYXA5ZTRNV3pfc1M1OTlsSDR0VnV4Y21uY083MS1OWWxBZkZJRVpscWtrdXc1bmF3U1QySllTYUd0amtnZ09QbkcwZkw1b0NqQmNjZHB1U09jSGxKVG8?oc=5" target="_blank" rel="noopener"><div class="card-title">普丁致電祝賀川普80歲生日 雙方聚焦烏克蘭戰爭與伊朗局勢 - Yahoo新聞</div><div class="card-body">普丁致電祝賀川普80歲生日 雙方聚焦烏克蘭戰爭與伊朗局勢 Yahoo新聞</div><div class="card-foot"><span class="card-src">Yahoo新聞</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card world" href="https://news.google.com/rss/articles/CBMieEFVX3lxTE1VOXd6dDhLWndpQVNhTkcxZFlrY0xIR3RsUTN2Z3dSZ0ZnaXFKOTFBdjNWalF6RzZFdlVvN0hiejI4NVBUbW5TNXZtb1YySXpJZEJ0QWhvMnVfU0QwOG5EbjlqSF9oZFJ3QVdmUXpXT3dOUFhhRnFPMw?oc=5" target="_blank" rel="noopener"><div class="card-title">「僵局戰爭」：美國和俄羅斯為誤判付出高昂代價- 紐約時報中文網 - 纽约时报中文网</div><div class="card-body">「僵局戰爭」：美國和俄羅斯為誤判付出高昂代價- 紐約時報中文網 纽约时报中文网</div><div class="card-foot"><span class="card-src">纽约时报中文网</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card world" href="https://news.google.com/rss/articles/CBMiTkFVX3lxTFBiQmREWDV6Q3Zpa1ptdzhSOVBxQ0VHemo3TDltWHhnN1ZGSGFOeFV4WkxqaDhlZnJ3cnp6S0FqM2d6aml6ZkRpdDExajF5UQ?oc=5" target="_blank" rel="noopener"><div class="card-title">王立本觀點：「緩衝區」還是併吞？從烏克蘭戰爭看俄羅斯的帝國語言 | 王立本 | 評論 - Storm.mg</div><div class="card-body">王立本觀點：「緩衝區」還是併吞？從烏克蘭戰爭看俄羅斯的帝國語言 | 王立本 | 評論 Storm.mg</div><div class="card-foot"><span class="card-src">Storm.mg</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card world" href="https://news.google.com/rss/articles/CBMiT0FVX3lxTE4tZEFLclF5ZnZEZVBNU0F5cEhtV0U0RGZtX01HVDE5UUUzSG84R3FMem81TjVBVXVheDc3OWNQd0p0Q1VYQ0JjdldCeDEycEk?oc=5" target="_blank" rel="noopener"><div class="card-title">川普赴法國出席G7峰會！AI、俄烏與伊朗成焦點 專家：恐爆火藥味衝突 - news.cnyes.com</div><div class="card-body">川普赴法國出席G7峰會！AI、俄烏與伊朗成焦點 專家：恐爆火藥味衝突 news.cnyes.com</div><div class="card-foot"><span class="card-src">news.cnyes.com</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card world" href="https://news.google.com/rss/articles/CBMiYkFVX3lxTE5KZGZHeWNXejRQYlJwVXNaaW9OUHg1RmM5X3dsODN0b09jakhiUnFtemdRTVFLME5nczNNTmZ0Vy1pMTV1dURjb2NiVVRoUUlqanIyYmM0aldRa1dXeVRLYUhR0gFnQVVfeXFMTmxGYUhYa0VnRnRXYmpiOURINW9FU2x6SUt5RVUwWXF4dUlKTU9NZEJXeURMMDlGaE42MGlsVGFUcmVnZ0hZVlRsYlE4Wkt4T0FXZl8ySDZaVlJfM0VhMGswa291SGhmMA?oc=5" target="_blank" rel="noopener"><div class="card-title">自由開講》烏克蘭無人機改寫戰爭 台灣不能慢半拍 - 自由評論網</div><div class="card-body">自由開講》烏克蘭無人機改寫戰爭 台灣不能慢半拍 自由評論網</div><div class="card-foot"><span class="card-src">自由評論網</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card world" href="https://news.google.com/rss/articles/CBMigAFBVV95cUxNR1FNdnBLb19GVmtPS09NOG5HNHhZN0EwbFJ2V2VqN0JINC1tb0lkSWF6UVBFTzdoNjZVSWZEUlI5b0ZRVEdERlY2WVJYSnZISEUzMlFzc0dQVnpnaS1Zazd5QlJ3MF9mOGRibnN1Q0RHQUJoYjRhYXlZZkRwNUtGLQ?oc=5" target="_blank" rel="noopener"><div class="card-title">伊朗若擁核武，世界一定更危險？美伊開戰是保護以色列還是拖累台灣？看懂中東戰火背後真正風險 - 今周刊</div><div class="card-body">伊朗若擁核武，世界一定更危險？美伊開戰是保護以色列還是拖累台灣？看懂中東戰火背後真正風險 今周刊</div><div class="card-foot"><span class="card-src">今周刊</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card world" href="https://news.google.com/rss/articles/CBMihAFBVV95cUxQM2tHRi1TQWhGMW50SEo0ZlQ2ZGIzTTc2cmsxRHI2NDZQYzVKTHlmSWNxOE5QNEh5ZU12dHR5bktVeWk0NEctWTk1RFhfSk8tbS1kM25ja1JiUFg2S2luLUNwYTBhZ2ZLLTA2VVlLV2EzenA5UmRoLXBDbDdFY0FjTmw5ZHI?oc=5" target="_blank" rel="noopener"><div class="card-title">川普：取消今晚轟炸伊朗，美國與以色列等中東多國秘密達成「歷史性交易」 - 動區動趨</div><div class="card-body">川普：取消今晚轟炸伊朗，美國與以色列等中東多國秘密達成「歷史性交易」 動區動趨</div><div class="card-foot"><span class="card-src">動區動趨</span><span class="card-link">開啟原文 →</span></div></a>
+<div class="empty"><span class="ic">📭</span>目前沒有資料</div>
       </div>
     </div>
     <div class="cat" data-cat="house">
-      <div class="cat-head"><span class="cat-tag house">Housing</span><span class="cat-name">台灣房市</span><span class="cat-count">7 則</span></div>
+      <div class="cat-head"><span class="cat-tag house">Housing</span><span class="cat-name">台灣房市</span><span class="cat-count"></span></div>
       <div class="grid">
-<a class="card house" href="https://news.google.com/rss/articles/CBMiT0FVX3lxTE1FUV91bXBkQnoyZk02VER4OWh4X1U0ZllSTkdmclMyOElGeGwyclJ5Q0QydkxabVgzbEI5VF82UUVqcWsyY3VSci1xaWlSQWs?oc=5" target="_blank" rel="noopener"><div class="card-title">〈房產〉盤點雙北公辦都更案周邊房市 嘉興街周邊房價比同區均價便宜17% - news.cnyes.com</div><div class="card-body">〈房產〉盤點雙北公辦都更案周邊房市 嘉興街周邊房價比同區均價便宜17% news.cnyes.com</div><div class="card-foot"><span class="card-src">news.cnyes.com</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card house" href="https://news.google.com/rss/articles/CBMiZEFVX3lxTE9sb1JyUG5kNWk1a1F5YmROZC1PMlB0ZlhpSnl1YVUwTGxQeGdOVHo1UVdPaHdod3FNTzlrMWpvdFhoYWRFVmdmRThuMjRfdUo3Q2dTMDZIRWZxbmhEQzBnTjRjWWQ?oc=5" target="_blank" rel="noopener"><div class="card-title">房市瞭望》新青安2.0補破網 關鍵仍是房價 - 民報</div><div class="card-body">房市瞭望》新青安2.0補破網 關鍵仍是房價 民報</div><div class="card-foot"><span class="card-src">民報</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card house" href="https://news.google.com/rss/articles/CBMiXEFVX3lxTFBsUEZ6RXRaNThsNkhGVjBoUkQtOVIzd1N1Mm5PUEtmeUthaHJoUzV5TkxsN0QzUkdvdzQ5QzF2R1Z0dWd4RHJST0JyajUxc0hYS1VCZmdVNDJXUnp0?oc=5" target="_blank" rel="noopener"><div class="card-title">桃園建案「買房退差價」掀熱議！網查地點、價格：只是個開始而已| 房產新訊 - udn房地產</div><div class="card-body">桃園建案「買房退差價」掀熱議！網查地點、價格：只是個開始而已| 房產新訊 udn房地產</div><div class="card-foot"><span class="card-src">udn房地產</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card house" href="https://news.google.com/rss/articles/CBMihwFBVV95cUxNVUo3UXNTdklpc2hVOVY0Q25FMnEzdFR3OENGUE9LdWNMQTNzdF9aNkNpZ1VDN1NMYU53V3cwU1IzaEpYSFpPRkZWMk0tVGNYTGdsSDhqTFB1cXF2WW8xSFFIMWVxWFg4a0sxeUE1VFlQQ0RKY2RCeXhING1sRU8teXZYUG1wOE0?oc=5" target="_blank" rel="noopener"><div class="card-title">空屋率越高房價越跌？揭開台灣房市「愈空愈貴」的暗黑邏輯｜何世昌觀點 - farglory-realty.com.tw</div><div class="card-body">空屋率越高房價越跌？揭開台灣房市「愈空愈貴」的暗黑邏輯｜何世昌觀點 farglory-realty.com.tw</div><div class="card-foot"><span class="card-src">farglory-realty.com.tw</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card house" href="https://news.google.com/rss/articles/CBMiXEFVX3lxTE1kZHpxaGh2M2lfMVZvNnA5UVZHX2s5TEE3LUM4UEJMeEJMczhJZTNoam11X1VPSFc3TnFMNndtUThNeGlneG5wNTdIM1hlS0JTeHFBVm93N1VrblBR?oc=5" target="_blank" rel="noopener"><div class="card-title">新青安7月底落幕 舊戶能否續享2.0補貼？過來人談青安房貸14年變化 - 住展雜誌</div><div class="card-body">新青安7月底落幕 舊戶能否續享2.0補貼？過來人談青安房貸14年變化 住展雜誌</div><div class="card-foot"><span class="card-src">住展雜誌</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card house" href="https://news.google.com/rss/articles/CBMiWkFVX3lxTE9HS1VfVzdmRzZieURqdlhQM3lkamI0RGZqYlZONnJMRU1Ca1BObTl3cHE2UERSRTVmUDYwUEZYc01RZFZ6TzAyd2FJVklFRFFkZk5HbmJadl9ZZw?oc=5" target="_blank" rel="noopener"><div class="card-title">新青安優惠7月底落日 揹千萬房貸月付3.3萬 - 卡優新聞網</div><div class="card-body">新青安優惠7月底落日 揹千萬房貸月付3.3萬 卡優新聞網</div><div class="card-foot"><span class="card-src">卡優新聞網</span><span class="card-link">開啟原文 →</span></div></a>
-<a class="card house" href="https://news.google.com/rss/articles/CBMiX0FVX3lxTE5WcGozM2pkTVl5b09XWHlZOWc1dWxLT1BnZXZ5OGMzVE00SUFGNWJLUkhnbjhUdGt5UkJyT3NIQWd0VUpiOEU3MHJ2aDFBR0l4elE5Tk5GRm4xYTI5bzNR?oc=5" target="_blank" rel="noopener"><div class="card-title">新青安將落日！寬限期滿、補貼取消 千萬房貸每月還款「驟增1.8萬元」 - 工商時報</div><div class="card-body">新青安將落日！寬限期滿、補貼取消 千萬房貸每月還款「驟增1.8萬元」 工商時報</div><div class="card-foot"><span class="card-src">工商時報</span><span class="card-link">開啟原文 →</span></div></a>
+<div class="empty"><span class="ic">📭</span>目前沒有資料</div>
+      </div>
+    </div>
+    <div class="cat" data-cat="weather">
+      <div class="cat-head"><span class="cat-tag weather">Weather</span><span class="cat-name">氣象消息</span><span class="cat-count"></span></div>
+      <div class="grid">
+<div class="empty"><span class="ic">📭</span>目前沒有資料</div>
       </div>
     </div>
   </section>
@@ -279,6 +280,8 @@ footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
     var cats=document.querySelectorAll(".cat");
     for(var j=0;j<cats.length;j++){var c=cats[j];c.style.display=(f==="all"||c.getAttribute("data-cat")===f)?"":"none";}
   }
+  function refreshNow(){ location.href = location.pathname + "?t=" + Date.now(); }
+  window.__refresh=refreshNow;
   window.__filter=filter;
   document.addEventListener("DOMContentLoaded",function(){ setCity(); loadWeather(); });
 })();
