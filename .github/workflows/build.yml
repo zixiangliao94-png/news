@@ -1,0 +1,46 @@
+name: 更新新聞網站
+
+on:
+  schedule:
+    # GitHub 使用 UTC 時間。台灣 = UTC+8。
+    - cron: '0 22 * * *'   # 台灣每天 06:00
+    - cron: '0 4 * * *'    # 台灣每天 12:00
+    - cron: '0 10 * * *'   # 台灣每天 18:00
+  workflow_dispatch:        # 也可在 Actions 分頁手動按「Run workflow」
+
+permissions:
+  contents: write           # 允許把產生的網頁寫回倉庫
+
+concurrency:
+  group: build-news
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得倉庫
+        uses: actions/checkout@v4
+
+      - name: 安裝 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安裝套件
+        run: pip install feedparser requests beautifulsoup4 lxml
+
+      - name: 抓新聞並產生網頁
+        run: python news.py --no-open --no-cache --days 7 --out index.html
+
+      - name: 發布（寫回倉庫）
+        run: |
+          git config user.name "news-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .news_archive.json
+          if git diff --staged --quiet; then
+            echo "沒有變更，略過"
+          else
+            git commit -m "自動更新新聞 $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
+            git push
+          fi
