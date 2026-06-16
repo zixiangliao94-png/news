@@ -1,0 +1,71 @@
+每日情報站 — 雲端版設定說明（一次設定，永久使用）
+================================================================
+
+【完成後你會得到什麼】
+• 一個固定網址，例如：https://你的帳號.github.io/news/
+• 手機／電腦點開就是最新新聞 + 即時天氣，可加到主畫面、可分享。
+• GitHub 伺服器每天自動抓三次新聞（台灣 06:00 / 12:00 / 18:00），
+  你平常完全不用做任何事。
+• 全程免費。
+
+----------------------------------------------------------------
+【設定步驟】（約 15 分鐘，只需做一次）
+
+步驟 1：註冊 GitHub
+  到 https://github.com 註冊一個免費帳號。
+
+步驟 2：建立倉庫（Repository）
+  1. 右上角「+」→ New repository。
+  2. Repository name 填：news（或你喜歡的名字）。
+  3. 選「Public」（公開；免費版 Pages 需要公開倉庫）。
+  4. 按 Create repository。
+
+步驟 3：上傳檔案
+  1. 在倉庫頁面按「uploading an existing file」（或 Add file → Upload files）。
+  2. 把本資料夾「除了 .github 以外」的所有檔案拖進去：
+       news.py、index.html、requirements.txt、.gitignore、
+       apple-touch-icon.png、favicon.ico、favicon-16.png、favicon-32.png、
+       icon-192.png、icon-512.png、site.webmanifest
+  3. 下方按 Commit changes。
+
+  ※ .github 資料夾（裡面的排程設定）瀏覽器拖曳常會漏掉，所以另外用步驟 4 建立。
+
+步驟 4：建立自動排程設定檔
+  1. 倉庫頁面 → Add file → Create new file。
+  2. 檔名欄位輸入（含斜線，會自動建資料夾）：
+       .github/workflows/build.yml
+  3. 把本資料夾內 .github/workflows/build.yml 的內容整段貼上。
+  4. 按 Commit changes。
+
+步驟 5：開啟「寫入權限」（讓自動更新能存檔）
+  Settings → Actions → General → 最下方 Workflow permissions
+  → 選「Read and write permissions」→ Save。
+
+步驟 6：開啟網站（GitHub Pages）
+  Settings → Pages → Build and deployment → Source 選「Deploy from a branch」
+  → Branch 選「main」、資料夾選「/ (root)」→ Save。
+
+步驟 7：立即跑一次（產生第一份新聞）
+  上方 Actions 分頁 → 左側點「更新新聞網站」→ 右側「Run workflow」→ Run。
+  等約 1～2 分鐘跑完（綠色勾勾）。
+
+步驟 8：打開你的網站
+  網址是：https://你的帳號.github.io/news/
+  （Settings → Pages 頁面上方也會顯示這個網址。）
+  在手機 Safari 打開 → 分享 → 加入主畫面，就像一個 App。
+
+----------------------------------------------------------------
+【日常使用】
+  什麼都不用做。每天自動更新三次。
+  想立刻更新：Actions → 更新新聞網站 → Run workflow。
+
+【小提醒】
+• GitHub 規定：倉庫若連續 60 天完全沒有動作，自動排程會暫停。
+  若哪天發現沒更新，到 Actions 手動按一次 Run workflow 即可重新喚醒。
+• 新聞由 GitHub 伺服器抓取（不經過會壞的公開代理），所以穩定。
+• 天氣是你打開網頁時由瀏覽器即時抓取（免費、免設定）。
+• 想改自動更新時間：編輯 .github/workflows/build.yml 裡的 cron（註解有寫對照）。
+
+【想改新聞主題】
+  編輯 news.py 最上方的 WORLD_QUERIES / HOUSE_QUERIES 兩組關鍵字即可，
+  例如房市想多抓「都更」「危老」「租屋」就加進 HOUSE_QUERIES。
