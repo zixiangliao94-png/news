@@ -74,23 +74,28 @@ GNEWS_LANG    = "zh-TW"
 GNEWS_COUNTRY = "TW"
 
 WORLD_QUERIES = [
-    "國際局勢 台灣",
-    "地緣政治",
-    "美中關係 外交",
-    "烏克蘭 戰爭",
-    "以色列 中東",
-    "G7 G20 聯合國",
-    "美國 制裁 軍事",
+    "國際 政治 局勢",
+    "國際 新聞 焦點",
+    "國際 重大事件",
+    "美國 中國 關係",
+    "兩岸 關係",
+    "烏克蘭 以色列 中東",
+    "日本 韓國 亞洲",
+    "全球 經濟 外交",
+    "地緣政治 軍事",
 ]
 
 HOUSE_QUERIES = [
     "台灣 房市 房價",
+    "房貸 利率",
+    "買房 賣房",
+    "看屋 預售屋 建案",
+    "重劃區 開發",
+    "房屋 交易 政策",
     "實價登錄 成交",
     "新青安 房貸",
-    "囤房稅 房地產政策",
-    "台北 新北 房價",
-    "桃園 建案 預售屋",
-    "央行 升息 降息 房市",
+    "台北 新北 桃園 房價",
+    "都更 危老 危老重建",
 ]
 
 FALLBACK_WORLD = [
@@ -109,23 +114,25 @@ FALLBACK_HOUSE = [
 ]
 
 WORLD_KEYWORDS = [
-    "台灣", "美國", "中國", "俄羅斯", "烏克蘭", "以色列", "伊朗",
-    "北韓", "日本", "歐盟", "NATO", "貿易", "制裁", "軍事", "外交",
-    "戰爭", "峰會", "聯合國", "地緣", "G7", "G20",
+    "台灣", "國際", "全球", "政治", "兩岸", "亞洲", "經濟",
+    "美國", "中國", "俄羅斯", "烏克蘭", "以色列", "伊朗", "歐洲",
+    "北韓", "日本", "韓國", "歐盟", "NATO", "貿易", "關稅", "制裁",
+    "軍事", "外交", "戰爭", "衝突", "選舉", "峰會", "聯合國", "地緣", "G7", "G20",
 ]
 HOUSE_KEYWORDS = [
-    "房價", "房市", "實價登錄", "容積", "都更", "房貸", "利率",
-    "建商", "預售屋", "新青安", "囤房稅", "地價", "坪", "房地產",
+    "房價", "房市", "房屋", "買房", "賣房", "看屋", "重劃區",
+    "房貸", "利率", "實價登錄", "容積", "都更", "危老", "建商",
+    "預售屋", "建案", "新青安", "囤房稅", "地價", "坪", "房地產",
     "台北", "新北", "桃園", "北台灣", "豪宅", "租金", "成交",
-    "央行", "升息", "降息", "房仲", "開價", "議價",
+    "央行", "升息", "降息", "房仲", "開價", "議價", "交易",
 ]
 
 WEATHER_QUERIES = [
     "台灣 天氣 預報",
-    "颱風 動態",
-    "氣象署 特報",
-    "地震 報導",
-    "豪雨 高溫 特報",
+    "天氣 氣溫 變化",
+    "氣象署 天氣",
+    "颱風",
+    "地震 台灣",
 ]
 FALLBACK_WEATHER = [
     ("中央社",   "https://www.cna.com.tw/rss/aall.aspx"),
@@ -167,7 +174,7 @@ REQUEST_HEADERS = {
     "Cache-Control":   "no-cache",
 }
 
-MAX_PER_SECTION   = 10
+MAX_PER_SECTION   = 25
 TIMEOUT           = 12
 RETRY             = 2
 DEDUP_THRESHOLD   = 0.72   # [品質-2] 相似度閾值
@@ -666,9 +673,11 @@ def merge_archive(new_world, new_house, new_weather=None):
     new_weather = new_weather or []
     arc = load_archive()
     prev_w = arc.get("world", []); prev_h = arc.get("house", []); prev_x = arc.get("weather", [])
-    world = _purge_old(deduplicate(prev_w + _stamp_dates(new_world)))
-    house = _purge_old(deduplicate(prev_h + _stamp_dates(new_house)))
-    weather = _purge_old(deduplicate(prev_x + _stamp_dates(new_weather)))
+    def _cap(arts, n=60):
+        return sorted(arts, key=lambda a: a.get("date", ""), reverse=True)[:n]
+    world = _cap(_purge_old(deduplicate(prev_w + _stamp_dates(new_world))))
+    house = _cap(_purge_old(deduplicate(prev_h + _stamp_dates(new_house))))
+    weather = _cap(_purge_old(deduplicate(prev_x + _stamp_dates(new_weather))))
     try:
         archive_path().write_text(
             json.dumps({"world": world, "house": house, "weather": weather, "saved": now().isoformat()},
@@ -782,7 +791,7 @@ def build_html(world: list, house: list, weather: list = None, cached: bool = Fa
         '    <div class="block-head"><span class="zh">本日</span><span class="en">Today</span>'
         f'<span class="range">{today_range}</span></div>\n'
         '    <div class="block-rule"></div>\n'
-        + build_cat("world", "World", "國際局勢", tw) + "\n"
+        + build_cat("world", "Politics", "政治局勢", tw) + "\n"
         + build_cat("house", "Housing", "台灣房市", th) + "\n"
         + build_cat("weather", "Weather", "氣象消息", xw) + "\n"
         '  </section>'
@@ -792,7 +801,7 @@ def build_html(world: list, house: list, weather: list = None, cached: bool = Fa
         '    <div class="block-head"><span class="zh">本周</span><span class="en">This Week</span>'
         f'<span class="range">{week_range}</span></div>\n'
         '    <div class="block-rule"></div>\n'
-        + build_cat("world", "World", "國際局勢", ww) + "\n"
+        + build_cat("world", "Politics", "政治局勢", ww) + "\n"
         + build_cat("house", "Housing", "台灣房市", hh) + "\n"
         + build_cat("weather", "Weather", "氣象消息", xx) + "\n"
         '  </section>'
@@ -822,7 +831,7 @@ def build_html(world: list, house: list, weather: list = None, cached: bool = Fa
         '    <button class="btn btn-primary" onclick="__refresh()">↻ 立即更新</button>\n'
         '    <div class="filters">\n'
         '      <button class="chip on" data-f="all" onclick="__filter(\'all\')">全部</button>\n'
-        '      <button class="chip" data-f="world" onclick="__filter(\'world\')">🌐 國際</button>\n'
+        '      <button class="chip" data-f="world" onclick="__filter(\'world\')">🌐 政治</button>\n'
         '      <button class="chip" data-f="house" onclick="__filter(\'house\')">🏠 房市</button>\n'
         '      <button class="chip" data-f="weather" onclick="__filter(\'weather\')">🌦️ 氣象</button>\n'
         '    </div>\n'
@@ -835,7 +844,7 @@ def build_html(world: list, house: list, weather: list = None, cached: bool = Fa
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="每日情報站：國際局勢與台灣房市新聞彙整">
+<meta name="description" content="每日情報站：政治局勢、台灣房市、氣象與即時天氣彙整">
 <title>每日情報站 · {date_str}</title>
 <link rel="icon" type="image/png" sizes="32x32" href="{_icon_uri('favicon-32.png','image/png')}">
 <link rel="apple-touch-icon" sizes="180x180" href="{_icon_uri('apple-touch-icon.png','image/png')}">
@@ -850,12 +859,12 @@ def build_html(world: list, house: list, weather: list = None, cached: bool = Fa
     <div class="brand">
       <div class="eyebrow">Daily Intelligence Brief</div>
       <h1>每日情報站</h1>
-      <div class="tagline">國際局勢 &nbsp;·&nbsp; 台灣房市 &nbsp;·&nbsp; 即時天氣</div>
+      <div class="tagline">政治局勢 &nbsp;·&nbsp; 台灣房市 &nbsp;·&nbsp; 即時天氣</div>
     </div>
     <div class="meta">
       <div class="date">{date_str}</div>
       <div id="updated">更新 {time_str}{cache_note}</div>
-      <div style="font-size:10px;color:var(--muted)">國際 {len(world)} 則 · 房市 {len(house)} 則 · 氣象 {len(weather)} 則 · 保留 7 天</div>
+      <div style="font-size:10px;color:var(--muted)">政治 {len(world)} 則 · 房市 {len(house)} 則 · 氣象 {len(weather)} 則 · 保留 7 天</div>
     </div>
   </header>
 {weather_card}
@@ -941,7 +950,7 @@ def main() -> None:
 
         if args.only != "house":
             world = fetch_section_parallel(
-                "國際局勢", WORLD_QUERIES, FALLBACK_WORLD, WORLD_KEYWORDS, args.days
+                "政治局勢", WORLD_QUERIES, FALLBACK_WORLD, WORLD_KEYWORDS, args.days
             )
         if args.only != "world":
             house = fetch_section_parallel(
