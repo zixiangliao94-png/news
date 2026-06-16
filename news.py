@@ -30,6 +30,7 @@ v3.0 優化清單：
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime
 import difflib
 import json
@@ -605,6 +606,16 @@ footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
 # 日期分流（本日 / 本周）與七天滾動封存
 # ─────────────────────────────────────────────────────────
 
+def _icon_uri(name: str, mime: str) -> str:
+    """讀取同目錄圖檔轉成 data URI，讓產生的 HTML 自帶圖示、搬到任何位置都可用。
+    讀不到時退回相對路徑（與舊行為相容）。"""
+    try:
+        raw = (BASE_DIR / name).read_bytes()
+        return f"data:{mime};base64,{base64.b64encode(raw).decode()}"
+    except Exception:
+        return name
+
+
 def _date_obj(iso):
     if not iso:
         return today()
@@ -826,9 +837,8 @@ def build_html(world: list, house: list, weather: list = None, cached: bool = Fa
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="每日情報站：國際局勢與台灣房市新聞彙整">
 <title>每日情報站 · {date_str}</title>
-<link rel="icon" type="image/x-icon" href="favicon.ico">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="{_icon_uri('favicon-32.png','image/png')}">
+<link rel="apple-touch-icon" sizes="180x180" href="{_icon_uri('apple-touch-icon.png','image/png')}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="每日情報站">
 <meta name="theme-color" content="#0b1622">
@@ -839,7 +849,7 @@ def build_html(world: list, house: list, weather: list = None, cached: bool = Fa
   <header class="masthead">
     <div class="brand">
       <div class="eyebrow">Daily Intelligence Brief</div>
-      <h1>每日情報站<span class="dot">.</span></h1>
+      <h1>每日情報站</h1>
       <div class="tagline">國際局勢 &nbsp;·&nbsp; 台灣房市 &nbsp;·&nbsp; 即時天氣</div>
     </div>
     <div class="meta">
