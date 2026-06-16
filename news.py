@@ -646,6 +646,26 @@ footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
   .wx-stats{width:100%;justify-content:space-between;gap:0}
   .grid{grid-template-columns:1fr}
 }
+/* 開啟 App 讀取畫面 */
+#splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, #14304a 0%, transparent 55%),
+    radial-gradient(900px 500px at 0% 0%, #0e2236 0%, transparent 50%),
+    linear-gradient(180deg,#0b1622 0%,#091320 100%);
+  transition:opacity .55s ease, visibility .55s ease}
+#splash.hide{opacity:0;visibility:hidden}
+.splash-inner{text-align:center;padding:0 24px;transform:translateY(-4%)}
+.splash-eyebrow{font-size:11px;letter-spacing:6px;color:var(--gold-dim);
+  text-transform:uppercase;font-weight:700;margin-bottom:16px}
+.splash-title{font-family:var(--serif);font-weight:900;letter-spacing:3px;
+  font-size:clamp(34px,8.5vw,54px);color:var(--ink);line-height:1;margin-bottom:30px}
+.splash-bar{width:180px;height:3px;background:rgba(255,255,255,.10);
+  border-radius:3px;margin:0 auto;overflow:hidden}
+.splash-bar span{display:block;height:100%;width:0;border-radius:3px;
+  background:linear-gradient(90deg,var(--gold-dim),var(--gold));
+  animation:splashload 1.8s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes splashload{0%{width:0}100%{width:100%}}
+.splash-sub{margin-top:16px;font-size:11px;color:var(--muted);letter-spacing:3px}
 </style>
 """
 
@@ -734,6 +754,17 @@ def merge_archive(new_world, new_house, new_weather=None, new_domestic=None):
 # 天氣（瀏覽器端直連 Open-Meteo，免金鑰、獨立於新聞線路）+ 類別篩選
 WEATHER_FILTER_JS = """
 <script>
+  /* 開啟讀取畫面：顯示約 1.8 秒後淡出 */
+  (function(){
+    function hideSplash(){
+      var s=document.getElementById('splash');
+      if(!s) return;
+      s.classList.add('hide');
+      setTimeout(function(){ if(s) s.style.display='none'; }, 600);
+    }
+    setTimeout(hideSplash, 1800);
+  })();
+
 (function(){
   var CITY_KEY="qbz_city_v1";
   var CITIES=[["台北市",25.0330,121.5654],["新北市",25.0169,121.4628],["基隆市",25.1276,121.7392],
@@ -884,10 +915,10 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
         '  <div class="toolbar">\n'
         '    <div class="filters">\n'
         '      <button class="chip on" data-f="all" onclick="__filter(\'all\')">全部</button>\n'
-        '      <button class="chip" data-f="house" onclick="__filter(\'house\')">🏠 房市</button>\n'
-        '      <button class="chip" data-f="weather" onclick="__filter(\'weather\')">🌦️ 氣象</button>\n'
-        '      <button class="chip" data-f="world" onclick="__filter(\'world\')">🌐 國際</button>\n'
-        '      <button class="chip" data-f="domestic" onclick="__filter(\'domestic\')">🏛️ 政治</button>\n'
+        '      <button class="chip" data-f="house" onclick="__filter(\'house\')">房市</button>\n'
+        '      <button class="chip" data-f="weather" onclick="__filter(\'weather\')">氣象</button>\n'
+        '      <button class="chip" data-f="world" onclick="__filter(\'world\')">國際</button>\n'
+        '      <button class="chip" data-f="domestic" onclick="__filter(\'domestic\')">政治</button>\n'
         '    </div>\n'
         f'    <div class="status"><span class="dot live"></span><span>更新 {time_str}{cache_note}</span></div>\n'
         '  </div>'
@@ -908,6 +939,14 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
 {CSS}
 </head>
 <body>
+<div id="splash" aria-hidden="true">
+  <div class="splash-inner">
+    <div class="splash-eyebrow">Daily Intelligence Brief</div>
+    <div class="splash-title">每日情報站</div>
+    <div class="splash-bar"><span></span></div>
+    <div class="splash-sub">讀取中…</div>
+  </div>
+</div>
 <div class="wrap">
   <header class="masthead">
     <div class="brand">
