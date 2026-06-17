@@ -210,11 +210,13 @@ BASE_DIR = Path(__file__).parent          # 固定以腳本目錄為基準，不
 # 原本 TODAY / NOW / CACHE_FILE 是模組載入時算一次的常數，
 # 一旦 server.py / scheduler.py 常駐跨日執行，日期會卡在「啟動那天」，
 # 導致報告日期、快取檔名、近 N 天篩選全部用到舊日期 → 看起來抓不到最新。
+TW_TZ = datetime.timezone(datetime.timedelta(hours=8))  # 台灣時間 UTC+8
+
 def today() -> datetime.date:
-    return datetime.date.today()
+    return datetime.datetime.now(TW_TZ).date()
 
 def now() -> datetime.datetime:
-    return datetime.datetime.now()
+    return datetime.datetime.now(TW_TZ)
 
 def cache_file() -> Path:
     return BASE_DIR / f".news_cache_{today().strftime('%Y%m%d')}.json"
@@ -262,7 +264,10 @@ def parse_date(entry) -> datetime.date | None:
         val = getattr(entry, attr, None)
         if val:
             try:
-                return datetime.date(val[0], val[1], val[2])
+                return datetime.datetime(
+                    val[0], val[1], val[2], val[3], val[4], val[5],
+                    tzinfo=datetime.timezone.utc
+                ).astimezone(TW_TZ).date()
             except Exception:
                 pass
     return None
