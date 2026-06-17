@@ -2,11 +2,8 @@ name: 更新新聞網站
 
 on:
   schedule:
-    # GitHub 使用 UTC 時間。台灣 = UTC+8。
-    - cron: '0 22 * * *'   # 台灣每天 06:00
-    - cron: '0 4 * * *'    # 台灣每天 12:00
-    - cron: '0 10 * * *'   # 台灣每天 18:00
-  workflow_dispatch:        # 也可在 Actions 分頁手動按「Run workflow」
+    - cron: '0 * * * *'
+  workflow_dispatch:       # 也可在 Actions 分頁手動按「Run workflow」
 
 permissions:
   contents: write           # 允許把產生的網頁寫回倉庫
