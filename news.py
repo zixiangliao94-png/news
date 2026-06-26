@@ -93,6 +93,34 @@ HEADLINE_KEYWORDS = [
     "全國", "首見", "罕見", "震驚", "宣布", "公告", "發生", "警報",
 ]
 
+# 當地新聞（依縣市選擇器顯示對應地方新聞，僅保留台北市／新北市／桃園市／宜蘭縣）
+LOCAL_CITIES = ["台北市", "新北市", "桃園市", "宜蘭縣"]
+
+LOCAL_QUERIES = {
+    "台北市": ["台北市 新聞", "台北市 地方新聞", "台北市政府", "台北 市政"],
+    "新北市": ["新北市 新聞", "新北市 地方新聞", "新北市政府", "新北 市政"],
+    "桃園市": ["桃園市 新聞", "桃園市 地方新聞", "桃園市政府", "桃園 市政"],
+    "宜蘭縣": ["宜蘭縣 新聞", "宜蘭縣 地方新聞", "宜蘭縣政府", "宜蘭 縣政"],
+}
+
+FALLBACK_LOCAL_DEFAULT = [
+    ("中央社地方", "https://www.cna.com.tw/rss/aloc.aspx"),
+    ("中央社",     "https://www.cna.com.tw/rss/aall.aspx"),
+]
+
+LOCAL_KEYWORDS = {
+    "台北市": ["台北市", "台北", "北市", "信義區", "大安區", "松山區", "中正區",
+               "士林區", "內湖區", "文山區", "萬華區", "北投區", "南港區", "中山區", "大同區"],
+    "新北市": ["新北市", "新北", "板橋", "三重", "中和", "新莊", "土城", "樹林",
+               "蘆洲", "汐止", "淡水", "林口", "新店", "永和", "三峽", "鶯歌"],
+    "桃園市": ["桃園市", "桃園", "中壢", "八德", "平鎮", "楊梅", "蘆竹", "龍潭",
+               "大溪", "龜山", "大園", "觀音", "新屋", "復興區"],
+    "宜蘭縣": ["宜蘭縣", "宜蘭", "羅東", "蘇澳", "頭城", "礁溪", "五結", "壯圍",
+               "冬山", "三星", "大同", "南澳"],
+}
+
+LOCAL_MAX_PER_CITY = 12
+
 WORLD_QUERIES = [
     "國際 政治 局勢",
     "國際 新聞 焦點",
@@ -413,10 +441,10 @@ def load_cache() -> dict | None:
     return None
 
 
-def save_cache(world, house, weather=None, domestic=None, headline=None) -> None:
+def save_cache(world, house, weather=None, domestic=None, headline=None, local=None) -> None:
     try:
         cache_file().write_text(
-            json.dumps({"world": world, "house": house, "weather": weather or [], "domestic": domestic or [], "headline": headline or []}, ensure_ascii=False, indent=2),
+            json.dumps({"world": world, "house": house, "weather": weather or [], "domestic": domestic or [], "headline": headline or [], "local": local or []}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
     except Exception as e:
@@ -493,6 +521,22 @@ def fetch_section_parallel(
     return result
 
 
+def fetch_local_news(max_days: int) -> list[dict]:
+    """[當地新聞] 依縣市分別抓取，每篇文章標記 city，供前端依選擇的縣市切換顯示"""
+    all_local: list[dict] = []
+    for city in LOCAL_CITIES:
+        queries  = LOCAL_QUERIES[city]
+        keywords = LOCAL_KEYWORDS[city]
+        arts = fetch_section_parallel(
+            f"當地新聞·{city}", queries, FALLBACK_LOCAL_DEFAULT, keywords, max_days
+        )
+        arts = arts[:LOCAL_MAX_PER_CITY]
+        for a in arts:
+            a["city"] = city
+        all_local.extend(arts)
+    return all_local
+
+
 # ─────────────────────────────────────────────────────────
 # 動態摘要
 # ─────────────────────────────────────────────────────────
@@ -539,7 +583,7 @@ CSS = """
   --line:rgba(212,175,55,.20); --line2:rgba(212,175,55,.34);
   --gold:#d4af37; --gold-soft:#e7cd84; --gold-dim:#b3942f;
   --ink:#eef3f8; --sub:#b3c2d1; --muted:#7e93a6;
-  --world:#7fb2e3; --house:#e7cd84; --weather:#6cc6d6; --domestic:#b491d6; --headline:#e2574c;
+  --world:#7fb2e3; --house:#e7cd84; --weather:#6cc6d6; --domestic:#b491d6; --headline:#e2574c; --local:#7ed9a8;
   --serif:'Noto Serif TC',serif; --sans:'Noto Sans TC',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -637,7 +681,7 @@ details.cat>summary.cat-head{display:flex;align-items:center;gap:12px}
   width:108px;height:24px;box-sizing:border-box;flex-shrink:0;white-space:nowrap;
   font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
   border-radius:6px;color:#0b1622}
-.cat-tag.world{background:var(--world)} .cat-tag.house{background:var(--house)} .cat-tag.weather{background:var(--weather)} .cat-tag.domestic{background:var(--domestic)} .cat-tag.headline{background:var(--headline)}
+.cat-tag.world{background:var(--world)} .cat-tag.house{background:var(--house)} .cat-tag.weather{background:var(--weather)} .cat-tag.domestic{background:var(--domestic)} .cat-tag.headline{background:var(--headline)} .cat-tag.local{background:var(--local)}
 .cat-name{font-family:var(--serif);font-size:17px;font-weight:700;line-height:1}
 .cat-count{margin-left:auto;font-size:11px;color:var(--muted)}
 
@@ -647,7 +691,7 @@ details.cat>summary.cat-head{display:flex;align-items:center;gap:12px}
   transition:transform .18s,border-color .18s,box-shadow .18s;animation:rise .4s ease both;overflow:hidden;display:block}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
   background:var(--accent,var(--gold));opacity:.7}
-.card.world{--accent:var(--world)} .card.house{--accent:var(--house)} .card.weather{--accent:var(--weather)} .card.domestic{--accent:var(--domestic)} .card.headline{--accent:var(--headline)}
+.card.world{--accent:var(--world)} .card.house{--accent:var(--house)} .card.weather{--accent:var(--weather)} .card.domestic{--accent:var(--domestic)} .card.headline{--accent:var(--headline)} .card.local{--accent:var(--local)}
 .card:hover{transform:translateY(-3px);border-color:var(--line2);
   box-shadow:0 12px 28px rgba(0,0,0,.35)}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -674,6 +718,16 @@ footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
   display:flex;justify-content:center;text-align:center;flex-wrap:wrap;gap:8px;
   font-size:11.5px;color:var(--muted);letter-spacing:1px}
 
+#backToTop{position:fixed;right:26px;bottom:26px;width:46px;height:46px;border-radius:50%;
+  background:linear-gradient(135deg,#d4af37,#b3942f);color:#0b1622;border:none;
+  display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;
+  cursor:pointer;box-shadow:0 10px 26px rgba(0,0,0,.4);z-index:500;
+  opacity:0;visibility:hidden;transform:translateY(14px);
+  transition:opacity .25s,transform .25s,visibility .25s,filter .15s}
+#backToTop.show{opacity:1;visibility:visible;transform:translateY(0)}
+#backToTop:hover{filter:brightness(1.1)}
+#backToTop:active{transform:translateY(0) scale(.94)}
+
 @media(max-width:560px){
   .wrap{padding:calc(14px + env(safe-area-inset-top)) 14px 50px}
   .meta{text-align:left}
@@ -681,6 +735,7 @@ footer{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);
   .wxcard{gap:16px;padding:18px}
   .wx-stats{width:100%;justify-content:space-between;gap:0}
   .grid{grid-template-columns:1fr}
+  #backToTop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:42px;height:42px;font-size:17px}
 }
 /* 開啟 App 讀取畫面 */
 #splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
@@ -764,16 +819,18 @@ def _stamp_dates(articles):
 def _purge_old(articles):
     return [a for a in articles if _diff_days(a.get("date")) <= 6]
 
-def merge_archive(new_world, new_house, new_weather=None, new_domestic=None, new_headline=None):
+def merge_archive(new_world, new_house, new_weather=None, new_domestic=None, new_headline=None, new_local=None):
     """合併過去封存與本次抓取：既有在前（保留原始日期）→ 去重 → 清除超過七天 → 重新封存。
     這就是「新聞保留七天、重複不重複收、超過一周自動刪除」的實作。"""
     new_weather = new_weather or []
     new_domestic = new_domestic or []
     new_headline = new_headline or []
+    new_local = new_local or []
     arc = load_archive()
     prev_w = arc.get("world", []); prev_h = arc.get("house", [])
     prev_x = arc.get("weather", []); prev_d = arc.get("domestic", [])
     prev_hl = arc.get("headline", [])
+    prev_loc = arc.get("local", [])
     def _cap(arts, n=60):
         return sorted(arts, key=lambda a: a.get("date", ""), reverse=True)[:n]
     world = _cap(_purge_old(deduplicate(prev_w + _stamp_dates(new_world))))
@@ -781,14 +838,16 @@ def merge_archive(new_world, new_house, new_weather=None, new_domestic=None, new
     weather = _cap(_purge_old(deduplicate(prev_x + _stamp_dates(new_weather))))
     domestic = _cap(_purge_old(deduplicate(prev_d + _stamp_dates(new_domestic))))
     headline = _cap(_purge_old(deduplicate(prev_hl + _stamp_dates(new_headline))))
+    # local 依城市各自上限 60 篇（去重時城市標記會一起保留）
+    local = _cap(_purge_old(deduplicate(prev_loc + _stamp_dates(new_local))), n=60 * len(LOCAL_CITIES))
     try:
         archive_path().write_text(
-            json.dumps({"world": world, "house": house, "weather": weather, "domestic": domestic, "headline": headline, "saved": now().isoformat()},
+            json.dumps({"world": world, "house": house, "weather": weather, "domestic": domestic, "headline": headline, "local": local, "saved": now().isoformat()},
                        ensure_ascii=False),
             encoding="utf-8")
     except Exception as e:
         print("  ⚠ 封存寫入失敗（不影響本次報告）：" + str(e))
-    return world, house, weather, domestic, headline
+    return world, house, weather, domestic, headline, local
 
 # 天氣（瀏覽器端直連 Open-Meteo，免金鑰、獨立於新聞線路）+ 類別篩選
 WEATHER_FILTER_JS = """
@@ -806,9 +865,8 @@ WEATHER_FILTER_JS = """
 
 (function(){
   var CITY_KEY="qbz_city_v1";
-  var CITIES=[["台北市",25.0330,121.5654],["新北市",25.0169,121.4628],["基隆市",25.1276,121.7392],
-    ["桃園市",24.9936,121.3010],["新竹市",24.8138,120.9675],["台中市",24.1477,120.6736],
-    ["台南市",22.9999,120.2270],["高雄市",22.6273,120.3014],["宜蘭縣",24.7021,121.7378],["花蓮縣",23.9871,121.6015]];
+  var CITIES=[["台北市",25.0330,121.5654],["新北市",25.0169,121.4628],
+    ["桃園市",24.9936,121.3010],["宜蘭縣",24.7021,121.7378]];
   var WMO={0:["晴","☀️"],1:["晴時多雲","🌤️"],2:["多雲","⛅"],3:["陰","☁️"],
     45:["有霧","🌫️"],48:["霧凇","🌫️"],51:["毛毛雨","🌦️"],53:["毛毛雨","🌦️"],55:["毛毛雨","🌦️"],
     56:["凍雨","🌧️"],57:["凍雨","🌧️"],61:["小雨","🌧️"],63:["中雨","🌧️"],65:["大雨","🌧️"],
@@ -834,11 +892,27 @@ WEATHER_FILTER_JS = """
       $("wx-wind").textContent=Math.round(cur.wind_speed_10m);
     }).catch(function(){ $("wx-cond").textContent=(CITIES[idx]||CITIES[0])[0]+"　天氣載入失敗"; $("wx-feels").textContent="請檢查網路"; });
   }
+  /* 依目前選擇的縣市，篩選「當地新聞」卡片（不影響其他分類） */
+  function filterLocalByCity(){
+    var idx=+(localStorage.getItem(CITY_KEY)||0);
+    var cityName=(CITIES[idx]||CITIES[0])[0];
+    var cards=document.querySelectorAll(".card.local");
+    var visible=0;
+    for(var i=0;i<cards.length;i++){
+      var match=cards[i].getAttribute("data-city")===cityName;
+      cards[i].style.display=match?"":"none";
+      if(match) visible++;
+    }
+    var emptyEls=document.querySelectorAll(".local-empty");
+    for(var k=0;k<emptyEls.length;k++) emptyEls[k].style.display=visible===0?"":"none";
+    var countEls=document.querySelectorAll(".local-count");
+    for(var j=0;j<countEls.length;j++) countEls[j].textContent=visible+" 則";
+  }
   function setCity(){
     var sel=$("city"); if(!sel) return;
     CITIES.forEach(function(c,i){var o=document.createElement("option");o.value=i;o.textContent=c[0];sel.appendChild(o);});
     sel.value=localStorage.getItem(CITY_KEY)||0;
-    sel.onchange=function(){localStorage.setItem(CITY_KEY,sel.value);loadWeather();};
+    sel.onchange=function(){localStorage.setItem(CITY_KEY,sel.value);loadWeather();filterLocalByCity();};
   }
   function filter(f){
     var chips=document.querySelectorAll(".chip");
@@ -846,8 +920,18 @@ WEATHER_FILTER_JS = """
     var cats=document.querySelectorAll(".cat");
     for(var j=0;j<cats.length;j++){var c=cats[j];c.style.display=(f==="all"||c.getAttribute("data-cat")===f)?"":"none";}
   }
+  /* 置頂按鈕：捲動超過一定距離才顯示，點擊平滑捲回頂部 */
+  function setupBackToTop(){
+    var btn=$("backToTop"); if(!btn) return;
+    function onScroll(){
+      if(window.scrollY>360) btn.classList.add("show"); else btn.classList.remove("show");
+    }
+    window.addEventListener("scroll", onScroll, {passive:true});
+    onScroll();
+    btn.addEventListener("click", function(){ window.scrollTo({top:0, behavior:"smooth"}); });
+  }
   window.__filter=filter;
-  document.addEventListener("DOMContentLoaded",function(){ setCity(); loadWeather(); });
+  document.addEventListener("DOMContentLoaded",function(){ setCity(); loadWeather(); filterLocalByCity(); setupBackToTop(); });
 })();
 </script>
 """
@@ -856,15 +940,18 @@ WEATHER_FILTER_JS = """
 def build_card(a: dict, cat: str) -> str:
     title = escape(a.get("title", ""))
     summary = escape(a.get("summary", ""))
-    src   = escape(a.get("source", "綜合報導"))
+    city  = a.get("city", "")
+    src_raw = a.get("source", "綜合報導")
+    src   = escape(f"{city}・{src_raw}" if city else src_raw)
     link  = escape(a.get("link", ""))
+    city_attr = f' data-city="{escape(city)}"' if city else ""
     body  = f'<div class="card-body">{summary}</div>' if summary else ""
     foot  = (f'<div class="card-foot"><span class="card-src">{src}</span>'
              f'<span class="card-link">開啟原文 →</span></div>')
     if link:
-        return (f'<a class="card {cat}" href="{link}" target="_blank" rel="noopener">'
+        return (f'<a class="card {cat}"{city_attr} href="{link}" target="_blank" rel="noopener">'
                 f'<div class="card-title">{title}</div>{body}{foot}</a>')
-    return (f'<div class="card {cat}"><div class="card-title">{title}</div>{body}{foot}</div>')
+    return (f'<div class="card {cat}"{city_attr}><div class="card-title">{title}</div>{body}{foot}</div>')
 
 
 def build_cat(cat: str, tag_lbl: str, name: str, articles: list, collapsible: bool = False) -> str:
@@ -890,10 +977,41 @@ def build_cat(cat: str, tag_lbl: str, name: str, articles: list, collapsible: bo
     )
 
 
-def build_html(world: list, house: list, weather: list = None, domestic: list = None, headline: list = None, cached: bool = False) -> str:
+def build_local_cat(articles: list, collapsible: bool = True) -> str:
+    """[當地新聞] 所有縣市的文章都會渲染進來（標記 data-city），
+    前端依目前選擇的縣市顯示/隱藏對應卡片，並即時更新筆數與空狀態。"""
+    cat = "local"
+    count = f"{len(articles)} 則" if articles else "0 則"
+    if articles:
+        cards = "\n".join(build_card(a, cat) for a in articles)
+        local_empty = ('<div class="empty local-empty" style="display:none">'
+                       '<span class="ic">📭</span>目前選擇的縣市沒有當地新聞</div>')
+    else:
+        cards = '<div class="empty"><span class="ic">📭</span>目前沒有資料</div>'
+        local_empty = ""
+    head = (f'<span class="cat-tag {cat}">Local</span>'
+            f'<span class="cat-name">當地新聞</span><span class="cat-count local-count">{count}</span>')
+    body = f'      <div class="grid">\n{cards}\n{local_empty}\n      </div>\n'
+    if collapsible:
+        return (
+            f'    <details class="cat" data-cat="{cat}">\n'
+            f'      <summary class="cat-head">{head}<span class="cat-fold">▾</span></summary>\n'
+            f'{body}'
+            f'    </details>'
+        )
+    return (
+        f'    <div class="cat" data-cat="{cat}">\n'
+        f'      <div class="cat-head">{head}</div>\n'
+        f'{body}'
+        f'    </div>'
+    )
+
+
+def build_html(world: list, house: list, weather: list = None, domestic: list = None, headline: list = None, local: list = None, cached: bool = False) -> str:
     weather = weather or []
     domestic = domestic or []
     headline = headline or []
+    local = local or []
     _n = now()
     date_str = f"{_n.year} 年 {_n.month} 月 {_n.day} 日"
     time_str = f"{_n.hour:02d}:{_n.minute:02d}"
@@ -904,6 +1022,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     xw, xx = split_today_week(weather)
     dw, dd_ = split_today_week(domestic)
     hlw, hlh = split_today_week(headline)
+    lw, lh = split_today_week(local)
 
     yday = today() - datetime.timedelta(days=1)
     wk_start = today() - datetime.timedelta(days=6)
@@ -917,6 +1036,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
         '    <div class="block-rule"></div>\n'
         + build_cat("headline", "Headline", "頭條新聞", hlw, collapsible=True) + "\n"
         + build_cat("house", "Housing", "台灣房市", th, collapsible=True) + "\n"
+        + build_local_cat(lw) + "\n"
         + build_cat("weather", "Weather", "氣象消息", xw, collapsible=True) + "\n"
         + build_cat("world", "World", "國際局勢", tw, collapsible=True) + "\n"
         + build_cat("domestic", "Politics", "政治局勢", dw, collapsible=True) + "\n"
@@ -929,6 +1049,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
         '    <div class="block-rule"></div>\n'
         + build_cat("headline", "Headline", "頭條新聞", hlh, collapsible=True) + "\n"
         + build_cat("house", "Housing", "台灣房市", hh, collapsible=True) + "\n"
+        + build_local_cat(lh) + "\n"
         + build_cat("weather", "Weather", "氣象消息", xx, collapsible=True) + "\n"
         + build_cat("world", "World", "國際局勢", ww, collapsible=True) + "\n"
         + build_cat("domestic", "Politics", "政治局勢", dd_, collapsible=True) + "\n"
@@ -960,6 +1081,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
         '      <button class="chip on" data-f="all" onclick="__filter(\'all\')">全部</button>\n'
         '      <button class="chip" data-f="headline" onclick="__filter(\'headline\')">頭條</button>\n'
         '      <button class="chip" data-f="house" onclick="__filter(\'house\')">房市</button>\n'
+        '      <button class="chip" data-f="local" onclick="__filter(\'local\')">當地</button>\n'
         '      <button class="chip" data-f="weather" onclick="__filter(\'weather\')">氣象</button>\n'
         '      <button class="chip" data-f="world" onclick="__filter(\'world\')">國際</button>\n'
         '      <button class="chip" data-f="domestic" onclick="__filter(\'domestic\')">政治</button>\n'
@@ -973,7 +1095,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="description" content="每日情報站：頭條新聞、政治局勢、台灣房市、氣象與即時天氣彙整">
+<meta name="description" content="每日情報站：頭條新聞、政治局勢、台灣房市、當地新聞、氣象與即時天氣彙整">
 <title>每日情報站 · {date_str}</title>
 <link rel="icon" type="image/png" sizes="32x32" href="{_icon_uri('favicon-32.png','image/png')}">
 <link rel="apple-touch-icon" sizes="180x180" href="{_icon_uri('apple-touch-icon.png','image/png')}">
@@ -996,7 +1118,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     <div class="brand">
       <div class="eyebrow">Daily Intelligence Brief</div>
       <h1>每日情報站</h1>
-      <div class="tagline">頭條新聞 &nbsp;·&nbsp; 台灣房市 &nbsp;·&nbsp; 氣象 &nbsp;·&nbsp; 國際 &nbsp;·&nbsp; 政治 &nbsp;·&nbsp; 即時天氣</div>
+      <div class="tagline">頭條新聞 &nbsp;·&nbsp; 台灣房市 &nbsp;·&nbsp; 當地新聞 &nbsp;·&nbsp; 氣象 &nbsp;·&nbsp; 國際 &nbsp;·&nbsp; 政治 &nbsp;·&nbsp; 即時天氣</div>
     </div>
     <div class="meta">
       <div class="date">{date_str}</div>
@@ -1010,6 +1132,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     <span>© 版權所有　住商不動產　廖梓翔</span>
   </footer>
 </div>
+<button id="backToTop" aria-label="回到頂部" title="回到頂部">↑</button>
 {WEATHER_FILTER_JS}
 </body>
 </html>"""
@@ -1069,6 +1192,7 @@ def main() -> None:
     weather: list[dict] = []
     domestic: list[dict] = []
     headline: list[dict] = []
+    local: list[dict] = []
     cached = False
 
     # [B4修復] --only 模式時不使用 cache（避免部分 cache 污染另一類別）
@@ -1080,6 +1204,7 @@ def main() -> None:
             weather = cached_data.get("weather", [])
             domestic = cached_data.get("domestic", [])
             headline = cached_data.get("headline", [])
+            local = cached_data.get("local", [])
             cached = True
 
     if not cached:
@@ -1105,18 +1230,19 @@ def main() -> None:
                 "頭條新聞", HEADLINE_QUERIES, FALLBACK_HEADLINE, HEADLINE_KEYWORDS, args.days,
                 extra_feeds=[("Google 頭條", GNEWS_TOP_URL)],
             )
+            local = fetch_local_news(args.days)
 
         elapsed = time.time() - t0
         print(f"\n⏱  抓取耗時：{elapsed:.1f} 秒")
         # [B4修復] --only 時不寫 cache（只有完整抓取才寫）
         if not args.only:
-            save_cache(world, house, weather, domestic, headline)
+            save_cache(world, house, weather, domestic, headline, local)
 
-    print(f"📊 最終：頭條 {len(headline)} / 房市 {len(house)} / 氣象 {len(weather)} / 國際 {len(world)} / 政治 {len(domestic)} 則")
+    print(f"📊 最終：頭條 {len(headline)} / 房市 {len(house)} / 當地 {len(local)} / 氣象 {len(weather)} / 國際 {len(world)} / 政治 {len(domestic)} 則")
 
     if not args.only:
-        world, house, weather, domestic, headline = merge_archive(world, house, weather, domestic, headline)
-    html     = build_html(world, house, weather, domestic, headline, cached)
+        world, house, weather, domestic, headline, local = merge_archive(world, house, weather, domestic, headline, local)
+    html     = build_html(world, house, weather, domestic, headline, local, cached)
     out_path = Path(out_name).resolve()
     try:
         out_path.write_text(html, encoding="utf-8")
