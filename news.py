@@ -72,6 +72,26 @@ from bs4 import BeautifulSoup
 GNEWS_BASE    = "https://news.google.com/rss/search"
 GNEWS_LANG    = "zh-TW"
 GNEWS_COUNTRY = "TW"
+# 不帶查詢字串的「總覽頭條」feed（Google News 首頁頭條，非關鍵字搜尋）
+GNEWS_TOP_URL = f"https://news.google.com/rss?hl={GNEWS_LANG}&gl={GNEWS_COUNTRY}&ceid={GNEWS_COUNTRY}:{GNEWS_LANG}"
+
+# 頭條新聞（綜合各領域當下最重要的新聞，置於房市之前）
+HEADLINE_QUERIES = [
+    "頭條新聞",
+    "今日焦點",
+    "重大新聞",
+    "台灣 即時新聞",
+    "今日頭條",
+]
+FALLBACK_HEADLINE = [
+    ("中央社",   "https://www.cna.com.tw/rss/aall.aspx"),
+    ("自由時報", "https://news.ltn.com.tw/rss/all.xml"),
+    ("ETtoday",  "https://feeds.feedburner.com/ettoday/realtime"),
+]
+HEADLINE_KEYWORDS = [
+    "頭條", "焦點", "快訊", "重大", "獨家", "今日", "即時", "最新",
+    "全國", "首見", "罕見", "震驚", "宣布", "公告", "發生", "警報",
+]
 
 WORLD_QUERIES = [
     "國際 政治 局勢",
@@ -393,10 +413,10 @@ def load_cache() -> dict | None:
     return None
 
 
-def save_cache(world, house, weather=None, domestic=None) -> None:
+def save_cache(world, house, weather=None, domestic=None, headline=None) -> None:
     try:
         cache_file().write_text(
-            json.dumps({"world": world, "house": house, "weather": weather or [], "domestic": domestic or []}, ensure_ascii=False, indent=2),
+            json.dumps({"world": world, "house": house, "weather": weather or [], "domestic": domestic or [], "headline": headline or []}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
     except Exception as e:
@@ -425,9 +445,12 @@ def fetch_section_parallel(
     fallbacks: list[tuple],
     keywords: list[str],
     max_days: int,
+    extra_feeds: list[tuple] | None = None,
 ) -> list[dict]:
-    """[效能-1] 並行抓取所有 query"""
-    emoji = "🌐" if "國際" in label else "🏠"
+    """[效能-1] 並行抓取所有 query
+    extra_feeds：額外直接抓取的 (名稱, URL) feed，不經過關鍵字搜尋
+                （例如頭條新聞會額外併入 Google News 首頁頭條 feed）"""
+    emoji = "🌐" if "國際" in label else ("📰" if "頭條" in label else "🏠")
     print(f"\n{emoji} 抓取{label}（並行 {min(MAX_WORKERS, len(queries))} 線程）...")
 
     total = len(queries)
@@ -446,6 +469,14 @@ def fetch_section_parallel(
         }
         for future in as_completed(futures):
             arts = future.result()
+            all_articles.extend(arts)
+            if arts:
+                gnews_ok += 1
+
+    # 額外直接抓取的 feed（例如總覽頭條，不限關鍵字）
+    if extra_feeds:
+        for name, url in extra_feeds:
+            arts = fetch_feed(name, url, max_days)
             all_articles.extend(arts)
             if arts:
                 gnews_ok += 1
@@ -508,7 +539,7 @@ CSS = """
   --line:rgba(212,175,55,.20); --line2:rgba(212,175,55,.34);
   --gold:#d4af37; --gold-soft:#e7cd84; --gold-dim:#b3942f;
   --ink:#eef3f8; --sub:#b3c2d1; --muted:#7e93a6;
-  --world:#7fb2e3; --house:#e7cd84; --weather:#6cc6d6; --domestic:#b491d6;
+  --world:#7fb2e3; --house:#e7cd84; --weather:#6cc6d6; --domestic:#b491d6; --headline:#e2574c;
   --serif:'Noto Serif TC',serif; --sans:'Noto Sans TC',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -606,7 +637,7 @@ details.cat>summary.cat-head{display:flex;align-items:center;gap:12px}
   width:108px;height:24px;box-sizing:border-box;flex-shrink:0;white-space:nowrap;
   font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
   border-radius:6px;color:#0b1622}
-.cat-tag.world{background:var(--world)} .cat-tag.house{background:var(--house)} .cat-tag.weather{background:var(--weather)} .cat-tag.domestic{background:var(--domestic)}
+.cat-tag.world{background:var(--world)} .cat-tag.house{background:var(--house)} .cat-tag.weather{background:var(--weather)} .cat-tag.domestic{background:var(--domestic)} .cat-tag.headline{background:var(--headline)}
 .cat-name{font-family:var(--serif);font-size:17px;font-weight:700;line-height:1}
 .cat-count{margin-left:auto;font-size:11px;color:var(--muted)}
 
@@ -616,7 +647,7 @@ details.cat>summary.cat-head{display:flex;align-items:center;gap:12px}
   transition:transform .18s,border-color .18s,box-shadow .18s;animation:rise .4s ease both;overflow:hidden;display:block}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
   background:var(--accent,var(--gold));opacity:.7}
-.card.world{--accent:var(--world)} .card.house{--accent:var(--house)} .card.weather{--accent:var(--weather)} .card.domestic{--accent:var(--domestic)}
+.card.world{--accent:var(--world)} .card.house{--accent:var(--house)} .card.weather{--accent:var(--weather)} .card.domestic{--accent:var(--domestic)} .card.headline{--accent:var(--headline)}
 .card:hover{transform:translateY(-3px);border-color:var(--line2);
   box-shadow:0 12px 28px rgba(0,0,0,.35)}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -733,28 +764,31 @@ def _stamp_dates(articles):
 def _purge_old(articles):
     return [a for a in articles if _diff_days(a.get("date")) <= 6]
 
-def merge_archive(new_world, new_house, new_weather=None, new_domestic=None):
+def merge_archive(new_world, new_house, new_weather=None, new_domestic=None, new_headline=None):
     """合併過去封存與本次抓取：既有在前（保留原始日期）→ 去重 → 清除超過七天 → 重新封存。
     這就是「新聞保留七天、重複不重複收、超過一周自動刪除」的實作。"""
     new_weather = new_weather or []
     new_domestic = new_domestic or []
+    new_headline = new_headline or []
     arc = load_archive()
     prev_w = arc.get("world", []); prev_h = arc.get("house", [])
     prev_x = arc.get("weather", []); prev_d = arc.get("domestic", [])
+    prev_hl = arc.get("headline", [])
     def _cap(arts, n=60):
         return sorted(arts, key=lambda a: a.get("date", ""), reverse=True)[:n]
     world = _cap(_purge_old(deduplicate(prev_w + _stamp_dates(new_world))))
     house = _cap(_purge_old(deduplicate(prev_h + _stamp_dates(new_house))))
     weather = _cap(_purge_old(deduplicate(prev_x + _stamp_dates(new_weather))))
     domestic = _cap(_purge_old(deduplicate(prev_d + _stamp_dates(new_domestic))))
+    headline = _cap(_purge_old(deduplicate(prev_hl + _stamp_dates(new_headline))))
     try:
         archive_path().write_text(
-            json.dumps({"world": world, "house": house, "weather": weather, "domestic": domestic, "saved": now().isoformat()},
+            json.dumps({"world": world, "house": house, "weather": weather, "domestic": domestic, "headline": headline, "saved": now().isoformat()},
                        ensure_ascii=False),
             encoding="utf-8")
     except Exception as e:
         print("  ⚠ 封存寫入失敗（不影響本次報告）：" + str(e))
-    return world, house, weather, domestic
+    return world, house, weather, domestic, headline
 
 # 天氣（瀏覽器端直連 Open-Meteo，免金鑰、獨立於新聞線路）+ 類別篩選
 WEATHER_FILTER_JS = """
@@ -856,9 +890,10 @@ def build_cat(cat: str, tag_lbl: str, name: str, articles: list, collapsible: bo
     )
 
 
-def build_html(world: list, house: list, weather: list = None, domestic: list = None, cached: bool = False) -> str:
+def build_html(world: list, house: list, weather: list = None, domestic: list = None, headline: list = None, cached: bool = False) -> str:
     weather = weather or []
     domestic = domestic or []
+    headline = headline or []
     _n = now()
     date_str = f"{_n.year} 年 {_n.month} 月 {_n.day} 日"
     time_str = f"{_n.hour:02d}:{_n.minute:02d}"
@@ -868,6 +903,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     th, hh = split_today_week(house)
     xw, xx = split_today_week(weather)
     dw, dd_ = split_today_week(domestic)
+    hlw, hlh = split_today_week(headline)
 
     yday = today() - datetime.timedelta(days=1)
     wk_start = today() - datetime.timedelta(days=6)
@@ -877,12 +913,13 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     block_today = (
         '  <section class="block">\n'
         '    <div class="block-head"><span class="zh">本日</span><span class="en">Today</span>'
-        f'<span class="range">{today_range}</span></div>\n'
+        f'<span class="range">{today_range}</span><span class="fold-hint">點標題可折疊</span></div>\n'
         '    <div class="block-rule"></div>\n'
-        + build_cat("house", "Housing", "台灣房市", th) + "\n"
-        + build_cat("weather", "Weather", "氣象消息", xw) + "\n"
-        + build_cat("world", "World", "國際局勢", tw) + "\n"
-        + build_cat("domestic", "Politics", "政治局勢", dw) + "\n"
+        + build_cat("headline", "Headline", "頭條新聞", hlw, collapsible=True) + "\n"
+        + build_cat("house", "Housing", "台灣房市", th, collapsible=True) + "\n"
+        + build_cat("weather", "Weather", "氣象消息", xw, collapsible=True) + "\n"
+        + build_cat("world", "World", "國際局勢", tw, collapsible=True) + "\n"
+        + build_cat("domestic", "Politics", "政治局勢", dw, collapsible=True) + "\n"
         '  </section>'
     )
     block_week = (
@@ -890,6 +927,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
         '    <div class="block-head"><span class="zh">本周</span><span class="en">This Week</span>'
         f'<span class="range">{week_range}</span><span class="fold-hint">點標題可折疊</span></div>\n'
         '    <div class="block-rule"></div>\n'
+        + build_cat("headline", "Headline", "頭條新聞", hlh, collapsible=True) + "\n"
         + build_cat("house", "Housing", "台灣房市", hh, collapsible=True) + "\n"
         + build_cat("weather", "Weather", "氣象消息", xx, collapsible=True) + "\n"
         + build_cat("world", "World", "國際局勢", ww, collapsible=True) + "\n"
@@ -920,6 +958,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
         '  <div class="toolbar">\n'
         '    <div class="filters">\n'
         '      <button class="chip on" data-f="all" onclick="__filter(\'all\')">全部</button>\n'
+        '      <button class="chip" data-f="headline" onclick="__filter(\'headline\')">頭條</button>\n'
         '      <button class="chip" data-f="house" onclick="__filter(\'house\')">房市</button>\n'
         '      <button class="chip" data-f="weather" onclick="__filter(\'weather\')">氣象</button>\n'
         '      <button class="chip" data-f="world" onclick="__filter(\'world\')">國際</button>\n'
@@ -934,7 +973,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="description" content="每日情報站：政治局勢、台灣房市、氣象與即時天氣彙整">
+<meta name="description" content="每日情報站：頭條新聞、政治局勢、台灣房市、氣象與即時天氣彙整">
 <title>每日情報站 · {date_str}</title>
 <link rel="icon" type="image/png" sizes="32x32" href="{_icon_uri('favicon-32.png','image/png')}">
 <link rel="apple-touch-icon" sizes="180x180" href="{_icon_uri('apple-touch-icon.png','image/png')}">
@@ -957,7 +996,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     <div class="brand">
       <div class="eyebrow">Daily Intelligence Brief</div>
       <h1>每日情報站</h1>
-      <div class="tagline">台灣房市 &nbsp;·&nbsp; 氣象 &nbsp;·&nbsp; 國際 &nbsp;·&nbsp; 政治 &nbsp;·&nbsp; 即時天氣</div>
+      <div class="tagline">頭條新聞 &nbsp;·&nbsp; 台灣房市 &nbsp;·&nbsp; 氣象 &nbsp;·&nbsp; 國際 &nbsp;·&nbsp; 政治 &nbsp;·&nbsp; 即時天氣</div>
     </div>
     <div class="meta">
       <div class="date">{date_str}</div>
@@ -1029,6 +1068,7 @@ def main() -> None:
     house: list[dict] = []
     weather: list[dict] = []
     domestic: list[dict] = []
+    headline: list[dict] = []
     cached = False
 
     # [B4修復] --only 模式時不使用 cache（避免部分 cache 污染另一類別）
@@ -1039,6 +1079,7 @@ def main() -> None:
             house  = cached_data.get("house", [])
             weather = cached_data.get("weather", [])
             domestic = cached_data.get("domestic", [])
+            headline = cached_data.get("headline", [])
             cached = True
 
     if not cached:
@@ -1060,18 +1101,22 @@ def main() -> None:
             domestic = fetch_section_parallel(
                 "政治局勢", DOMESTIC_QUERIES, FALLBACK_DOMESTIC, DOMESTIC_KEYWORDS, args.days
             )
+            headline = fetch_section_parallel(
+                "頭條新聞", HEADLINE_QUERIES, FALLBACK_HEADLINE, HEADLINE_KEYWORDS, args.days,
+                extra_feeds=[("Google 頭條", GNEWS_TOP_URL)],
+            )
 
         elapsed = time.time() - t0
         print(f"\n⏱  抓取耗時：{elapsed:.1f} 秒")
         # [B4修復] --only 時不寫 cache（只有完整抓取才寫）
         if not args.only:
-            save_cache(world, house, weather, domestic)
+            save_cache(world, house, weather, domestic, headline)
 
-    print(f"📊 最終：房市 {len(house)} / 氣象 {len(weather)} / 國際 {len(world)} / 政治 {len(domestic)} 則")
+    print(f"📊 最終：頭條 {len(headline)} / 房市 {len(house)} / 氣象 {len(weather)} / 國際 {len(world)} / 政治 {len(domestic)} 則")
 
     if not args.only:
-        world, house, weather, domestic = merge_archive(world, house, weather, domestic)
-    html     = build_html(world, house, weather, domestic, cached)
+        world, house, weather, domestic, headline = merge_archive(world, house, weather, domestic, headline)
+    html     = build_html(world, house, weather, domestic, headline, cached)
     out_path = Path(out_name).resolve()
     try:
         out_path.write_text(html, encoding="utf-8")
