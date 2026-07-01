@@ -691,7 +691,7 @@ details.cat>summary.cat-head{display:flex;align-items:center;gap:12px}
   transition:transform .18s,border-color .18s,box-shadow .18s;animation:rise .4s ease both;overflow:hidden;display:block}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
   background:var(--accent,var(--gold));opacity:.7}
-.card.world{--accent:var(--world)} .card.house{--accent:var(--house)} .card.weather{--accent:var(--weather)} .card.domestic{--accent:var(--domestic)} .card.headline{--accent:var(--headline)} .card.local{--accent:var(--local)}
+.card.world{--accent:var(--world)} .card.house{--accent:var(--house)} .card.weather{--accent:var(--weather)} .card.domestic{--accent:var(--domestic)} .card.headline{--accent:var(--headline)} .card.local{--accent:var(--local);display:none}
 .card:hover{transform:translateY(-3px);border-color:var(--line2);
   box-shadow:0 12px 28px rgba(0,0,0,.35)}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -838,8 +838,17 @@ def merge_archive(new_world, new_house, new_weather=None, new_domestic=None, new
     weather = _cap(_purge_old(deduplicate(prev_x + _stamp_dates(new_weather))))
     domestic = _cap(_purge_old(deduplicate(prev_d + _stamp_dates(new_domestic))))
     headline = _cap(_purge_old(deduplicate(prev_hl + _stamp_dates(new_headline))))
-    # local 依城市各自上限 60 篇（去重時城市標記會一起保留）
-    local = _cap(_purge_old(deduplicate(prev_loc + _stamp_dates(new_local))), n=60 * len(LOCAL_CITIES))
+    # local 依城市各自去重＋各自上限 60 篇。
+    # 注意：不能把 4 個縣市的文章混在一起用 deduplicate() 比對標題相似度，
+    # 因為多個縣市會共用同一個備援 feed（中央社地方），標題很相似時
+    # 會誤判成重複而被丟掉，導致某縣市「今天忽然沒新聞」的假象。
+    # 所以先依 city 分組，各自去重、各自截斷，再合併。
+    merged_loc = prev_loc + _stamp_dates(new_local)
+    local: list[dict] = []
+    for city in LOCAL_CITIES:
+        city_arts = [a for a in merged_loc if a.get("city") == city]
+        city_arts = _cap(_purge_old(deduplicate(city_arts)), n=60)
+        local.extend(city_arts)
     try:
         archive_path().write_text(
             json.dumps({"world": world, "house": house, "weather": weather, "domestic": domestic, "headline": headline, "local": local, "saved": now().isoformat()},
@@ -874,6 +883,8 @@ WEATHER_FILTER_JS = """
     80:["陣雨","🌦️"],81:["陣雨","🌦️"],82:["強陣雨","⛈️"],85:["陣雪","🌨️"],86:["陣雪","❄️"],
     95:["雷雨","⛈️"],96:["雷雨冰雹","⛈️"],99:["強雷雨","⛈️"]};
   function $(id){return document.getElementById(id);}
+  function setText(id,val){ var el=$(id); if(el) el.textContent=val; }
+  function setHTML(id,val){ var el=$(id); if(el) el.innerHTML=val; }
   function loadWeather(){
     var idx=+(localStorage.getItem(CITY_KEY)||0); var c=CITIES[idx]||CITIES[0];
     var url="https://api.open-meteo.com/v1/forecast?latitude="+c[1]+"&longitude="+c[2]
@@ -881,32 +892,39 @@ WEATHER_FILTER_JS = """
       +"&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=1";
     fetch(url,{cache:"no-store"}).then(function(r){return r.json();}).then(function(j){
       var cur=j.current, dd=j.daily, w=WMO[cur.weather_code]||["—","🌡️"];
-      $("wx-icon").textContent=w[1];
-      $("wx-temp").innerHTML=Math.round(cur.temperature_2m)+"<small>°C</small>";
-      $("wx-cond").textContent=c[0]+"　"+w[0];
-      $("wx-feels").textContent="體感 "+Math.round(cur.apparent_temperature)+"°";
-      $("wx-hi").textContent=Math.round(dd.temperature_2m_max[0])+"°";
-      $("wx-lo").textContent=Math.round(dd.temperature_2m_min[0])+"°";
-      $("wx-rain").textContent=(dd.precipitation_probability_max[0]||0)+"%";
-      $("wx-hum").textContent=cur.relative_humidity_2m+"%";
-      $("wx-wind").textContent=Math.round(cur.wind_speed_10m);
-    }).catch(function(){ $("wx-cond").textContent=(CITIES[idx]||CITIES[0])[0]+"　天氣載入失敗"; $("wx-feels").textContent="請檢查網路"; });
+      setText("wx-icon",w[1]);
+      setHTML("wx-temp",Math.round(cur.temperature_2m)+"<small>°C</small>");
+      setText("wx-cond",c[0]+"　"+w[0]);
+      setText("wx-feels","體感 "+Math.round(cur.apparent_temperature)+"°");
+      setText("wx-hi",Math.round(dd.temperature_2m_max[0])+"°");
+      setText("wx-lo",Math.round(dd.temperature_2m_min[0])+"°");
+      setText("wx-rain",(dd.precipitation_probability_max[0]||0)+"%");
+      setText("wx-hum",cur.relative_humidity_2m+"%");
+      setText("wx-wind",Math.round(cur.wind_speed_10m));
+    }).catch(function(){ setText("wx-cond",(CITIES[idx]||CITIES[0])[0]+"　天氣載入失敗"); setText("wx-feels","請檢查網路"); });
   }
-  /* 依目前選擇的縣市，篩選「當地新聞」卡片（不影響其他分類） */
+  /* 依目前選擇的縣市，篩選「當地新聞」卡片（不影響其他分類）
+     注意：本日／本周各自有獨立的 <details> 區塊，篩選與計數必須各自獨立計算，
+     不能用全頁面 querySelectorAll 一次算總數，否則兩個區塊會共用同一個數字，
+     導致某區塊「顯示數字但打開沒東西」。 */
   function filterLocalByCity(){
     var idx=+(localStorage.getItem(CITY_KEY)||0);
     var cityName=(CITIES[idx]||CITIES[0])[0];
-    var cards=document.querySelectorAll(".card.local");
-    var visible=0;
-    for(var i=0;i<cards.length;i++){
-      var match=cards[i].getAttribute("data-city")===cityName;
-      cards[i].style.display=match?"":"none";
-      if(match) visible++;
+    var groups=document.querySelectorAll('.cat[data-cat="local"]');
+    for(var g=0;g<groups.length;g++){
+      var grp=groups[g];
+      var cards=grp.querySelectorAll(".card.local");
+      var visible=0;
+      for(var i=0;i<cards.length;i++){
+        var match=cards[i].getAttribute("data-city")===cityName;
+        cards[i].style.display=match?"block":"none";
+        if(match) visible++;
+      }
+      var emptyEls=grp.querySelectorAll(".local-empty");
+      for(var k=0;k<emptyEls.length;k++) emptyEls[k].style.display=visible===0?"":"none";
+      var countEls=grp.querySelectorAll(".local-count");
+      for(var j=0;j<countEls.length;j++) countEls[j].textContent=visible+" 則";
     }
-    var emptyEls=document.querySelectorAll(".local-empty");
-    for(var k=0;k<emptyEls.length;k++) emptyEls[k].style.display=visible===0?"":"none";
-    var countEls=document.querySelectorAll(".local-count");
-    for(var j=0;j<countEls.length;j++) countEls[j].textContent=visible+" 則";
   }
   function setCity(){
     var sel=$("city"); if(!sel) return;
