@@ -97,10 +97,10 @@ HEADLINE_KEYWORDS = [
 LOCAL_CITIES = ["台北市", "新北市", "桃園市", "宜蘭縣"]
 
 LOCAL_QUERIES = {
-    "台北市": ["台北市 新聞", "台北市 地方新聞", "台北市政府", "台北 市政"],
-    "新北市": ["新北市 新聞", "新北市 地方新聞", "新北市政府", "新北 市政"],
-    "桃園市": ["桃園市 新聞", "桃園市 地方新聞", "桃園市政府", "桃園 市政"],
-    "宜蘭縣": ["宜蘭縣 新聞", "宜蘭縣 地方新聞", "宜蘭縣政府", "宜蘭 縣政"],
+    "台北市": ["台北市 政策", "台北市 建設", "台北市 活動", "台北市 重大 新聞", "台北市 市政 建設"],
+    "新北市": ["新北市 政策", "新北市 建設", "新北市 活動", "新北市 重大 新聞", "新北市 市政 建設"],
+    "桃園市": ["桃園市 政策", "桃園市 建設", "桃園市 活動", "桃園市 重大 新聞", "桃園市 市政 建設"],
+    "宜蘭縣": ["宜蘭縣 政策", "宜蘭縣 建設", "宜蘭縣 活動", "宜蘭縣 重大 新聞", "宜蘭縣 縣政 建設"],
 }
 
 FALLBACK_LOCAL_DEFAULT = [
@@ -118,6 +118,29 @@ LOCAL_KEYWORDS = {
     "宜蘭縣": ["宜蘭縣", "宜蘭", "羅東", "蘇澳", "頭城", "礁溪", "五結", "壯圍",
                "冬山", "三星", "大同", "南澳"],
 }
+
+LOCAL_CITY_MARKERS = {
+    "台北市": ["台北市", "台北", "北市"],
+    "新北市": ["新北市", "新北"],
+    "桃園市": ["桃園市", "桃園"],
+    "宜蘭縣": ["宜蘭縣", "宜蘭"],
+}
+
+LOCAL_TOPIC_KEYWORDS = [
+    # 政策 / 市政
+    "政策", "政令", "施政", "市政", "縣政", "預算", "補助", "措施", "方案",
+    "公告", "法規", "自治條例", "計畫", "推動", "宣布",
+    # 建設 / 公共工程
+    "建設", "工程", "開工", "動工", "完工", "啟用", "通車", "捷運", "道路",
+    "橋梁", "公園", "校舍", "社宅", "都更", "重劃", "都市計畫", "公共設施",
+    "交通建設", "改善工程",
+    # 活動 / 展演
+    "活動", "展演", "市集", "嘉年華", "祭典", "藝文", "演唱會", "親子",
+    "觀光", "旅遊節", "路跑", "論壇", "講座",
+    # 重要新聞
+    "重大", "重要", "快訊", "影響", "停班", "停課", "災害", "事故", "警戒",
+    "疏散", "淹水", "停水", "停電", "防災",
+]
 
 LOCAL_MAX_PER_CITY = 12
 
@@ -425,6 +448,49 @@ def rank_articles(articles: list[dict], keywords: list[str], top: int) -> list[d
     return sorted(articles, key=lambda a: -score_article(a, keywords))[:top]
 
 
+def local_rank_keywords(city: str) -> list[str]:
+    return LOCAL_KEYWORDS.get(city, [city]) + LOCAL_TOPIC_KEYWORDS
+
+
+def first_marker_index(text: str, markers: list[str]) -> int | None:
+    indexes = [text.find(marker) for marker in markers if marker in text]
+    indexes = [idx for idx in indexes if idx >= 0]
+    return min(indexes) if indexes else None
+
+
+def title_points_to_other_city(title: str, city: str) -> bool:
+    own_pos = first_marker_index(title, LOCAL_CITY_MARKERS.get(city, [city]))
+    for other_city, markers in LOCAL_CITY_MARKERS.items():
+        if other_city == city:
+            continue
+        other_pos = first_marker_index(title, markers)
+        if other_pos is not None and (own_pos is None or other_pos < own_pos):
+            return True
+    return False
+
+
+def is_local_article_relevant(article: dict, city: str) -> bool:
+    """當地新聞只保留：縣市相符，且命中政策/建設/活動/重要新聞主題。"""
+    title = article.get("title") or ""
+    text = " ".join([
+        title,
+        article.get("summary") or "",
+        article.get("source") or "",
+    ]).lower()
+    city_hit = any(k.lower() in text for k in LOCAL_KEYWORDS.get(city, [city]))
+    topic_hit = any(k.lower() in text for k in LOCAL_TOPIC_KEYWORDS)
+    return city_hit and topic_hit and not title_points_to_other_city(title, city)
+
+
+def filter_local_articles(articles: list[dict]) -> list[dict]:
+    result: list[dict] = []
+    for a in articles or []:
+        city = a.get("city")
+        if city in LOCAL_CITIES and is_local_article_relevant(a, city):
+            result.append(a)
+    return result
+
+
 # ─────────────────────────────────────────────────────────
 # Cache
 # ─────────────────────────────────────────────────────────
@@ -474,6 +540,7 @@ def fetch_section_parallel(
     keywords: list[str],
     max_days: int,
     extra_feeds: list[tuple] | None = None,
+    filter_func=None,
 ) -> list[dict]:
     """[效能-1] 並行抓取所有 query
     extra_feeds：額外直接抓取的 (名稱, URL) feed，不經過關鍵字搜尋
@@ -516,6 +583,10 @@ def fetch_section_parallel(
             all_articles.extend(fetch_feed(name, url, max_days))
 
     all_articles = deduplicate(all_articles)
+    if filter_func:
+        before = len(all_articles)
+        all_articles = [a for a in all_articles if filter_func(a)]
+        print(f"  → 主題白名單保留 {len(all_articles)} / {before} 則")
     result       = rank_articles(all_articles, keywords, MAX_PER_SECTION)
     print(f"  → 去重後 {len(all_articles)} 則，篩選顯示 {len(result)} 則")
     return result
@@ -526,9 +597,10 @@ def fetch_local_news(max_days: int) -> list[dict]:
     all_local: list[dict] = []
     for city in LOCAL_CITIES:
         queries  = LOCAL_QUERIES[city]
-        keywords = LOCAL_KEYWORDS[city]
+        keywords = local_rank_keywords(city)
         arts = fetch_section_parallel(
-            f"當地新聞·{city}", queries, FALLBACK_LOCAL_DEFAULT, keywords, max_days
+            f"當地新聞·{city}", queries, FALLBACK_LOCAL_DEFAULT, keywords, max_days,
+            filter_func=lambda a, city=city: is_local_article_relevant(a, city),
         )
         arts = arts[:LOCAL_MAX_PER_CITY]
         for a in arts:
@@ -846,7 +918,10 @@ def merge_archive(new_world, new_house, new_weather=None, new_domestic=None, new
     merged_loc = prev_loc + _stamp_dates(new_local)
     local: list[dict] = []
     for city in LOCAL_CITIES:
-        city_arts = [a for a in merged_loc if a.get("city") == city]
+        city_arts = [
+            a for a in merged_loc
+            if a.get("city") == city and is_local_article_relevant(a, city)
+        ]
         city_arts = _cap(_purge_old(deduplicate(city_arts)), n=60)
         local.extend(city_arts)
     try:
@@ -1029,7 +1104,7 @@ def build_html(world: list, house: list, weather: list = None, domestic: list = 
     weather = weather or []
     domestic = domestic or []
     headline = headline or []
-    local = local or []
+    local = filter_local_articles(local or [])
     _n = now()
     date_str = f"{_n.year} 年 {_n.month} 月 {_n.day} 日"
     time_str = f"{_n.hour:02d}:{_n.minute:02d}"
@@ -1222,7 +1297,7 @@ def main() -> None:
             weather = cached_data.get("weather", [])
             domestic = cached_data.get("domestic", [])
             headline = cached_data.get("headline", [])
-            local = cached_data.get("local", [])
+            local = filter_local_articles(cached_data.get("local", []))
             cached = True
 
     if not cached:
@@ -1249,6 +1324,7 @@ def main() -> None:
                 extra_feeds=[("Google 頭條", GNEWS_TOP_URL)],
             )
             local = fetch_local_news(args.days)
+            local = filter_local_articles(local)
 
         elapsed = time.time() - t0
         print(f"\n⏱  抓取耗時：{elapsed:.1f} 秒")
